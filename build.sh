@@ -172,6 +172,9 @@ stage_ui() {
   #   3) Download Folder 帮助气泡：说明相对路径=子目录、绝对路径=下载目录本身
   #      （会被记住；需先在 NAS 共享权限里授予 metube 写权限）
   #   4) 导航栏 GitHub 图标链接指向本发行版仓库（不留上游个人信息）
+  #   5) 页脚 GitHub 链接旁加 "Privacy Policy" 入口（相对链接 privacy-policy.html：
+  #      直连 :8081 根路径与 App Center iframe /metube/ 前缀两种场景均正确解析；
+  #      否则应用内可达但不可发现，市场复查 C8 有风险）
   python3 - "$SRC_DIR/ui/src/app/app.html" "$SRC_DIR/ui/src/app/app.ts" <<'PYEOF'
 import re, sys
 html_p, ts_p = sys.argv[1], sys.argv[2]
@@ -189,6 +192,16 @@ html2 = html2.replace(
 # 导航栏 GitHub 图标 → 指向本发行版仓库（幂等：已改过则无变化）
 html2 = html2.replace('href="https://github.com/alexta69/metube"',
                       'href="https://github.com/Moechz/metube"')
+# 5) 页脚隐私政策入口（幂等：已插入则跳过）
+if 'privacy-policy.html' not in html2:
+    html2 = re.sub(
+        r'(<a href="https://github\.com/Moechz/metube"[^>]*>\s*<fa-icon \[icon\]="faGithub"\s*/>\s*<span>GitHub</span>\s*</a>)',
+        r'\1\n'
+        '        <div class="version-separator"></div>\n'
+        '        <a href="privacy-policy.html" target="_blank" rel="noopener" class="github-link">\n'
+        '          <span>Privacy Policy</span>\n'
+        '        </a>',
+        html2, count=1)
 html2 = html2.replace(
     'ngbPopover="A subfolder within the server-configured download directory. '
     'To set the directory itself, edit DOWNLOAD_DIR in /etc/metube/metube.env '
