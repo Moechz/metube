@@ -1,0 +1,36 @@
+[Unit]
+Description=MeTube bgutil POT provider (YouTube PO Token 服务)
+Documentation=https://github.com/jim60105/bgutil-ytdlp-pot-provider-rs
+After=network.target
+
+[Service]
+Type=simple
+User=metube
+Group=metube
+ExecStart=/opt/metube/bin/bgutil-pot server
+Restart=on-failure
+RestartSec=5
+
+# ---------- 权限最小化（沙箱加固） ----------
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/metube
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictNamespaces=true
+LockPersonality=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target

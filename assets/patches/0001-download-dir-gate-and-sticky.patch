@@ -1,0 +1,173 @@
+--- a/app/main.py
++++ b/app/main.py
+@@ -21,7 +21,7 @@
+ from watchfiles import DefaultFilter, Change, awatch
+ 
+ import bg_tasks
+-from ytdl import DownloadQueueNotifier, DownloadQueue, Download
++from ytdl import DownloadQueueNotifier, DownloadQueue, Download, _metube_validate_custom_root
+ from subscriptions import SubscriptionManager, SubscriptionNotifier, SubscriptionInfo, coerce_optional_bool
+ from yt_dlp.version import __version__ as yt_dlp_version
+ 
+@@ -238,7 +238,13 @@
+         Sensitive or server-only keys (YTDL_OPTIONS, file-system paths, TLS
+         settings, etc.) are intentionally excluded.
+         """
+-        return {k: getattr(self, k) for k in self._FRONTEND_KEYS}
++        result = {k: getattr(self, k) for k in self._FRONTEND_KEYS}
++        # [metube-deb patch] Pre-fill the UI folder field with the sticky
++        # user-chosen download dir (only while it is the effective base).
++        _metube_sticky = _metube_load_sticky()
++        if _metube_sticky and self.DOWNLOAD_DIR == _metube_sticky:
++            result['DEFAULT_FOLDER'] = _metube_sticky
++        return result
+ 
+     def load_ytdl_options(self) -> tuple[bool, str]:
+         try:
+@@ -303,6 +309,40 @@
+         return (True, '')
+ 
+ config = Config()
++
++# [metube-deb patch] ---- sticky UI-chosen download directory ----
++# The web UI cannot edit /etc configuration (the service runs unprivileged inside
++# a systemd sandbox). Instead, an absolute folder entered in the UI is validated
++# against the service user's own permissions (NAS sharing ACLs) and remembered in
++# the writable state dir; it is adopted as the effective download base at startup.
++def _metube_sticky_file():
++    return os.path.join(config.STATE_DIR, 'ui_download_dir')
++
++def _metube_load_sticky():
++    try:
++        with open(_metube_sticky_file()) as f:
++            return _metube_validate_custom_root(f.read().strip())
++    except OSError:
++        return None
++
++def _metube_save_sticky(path):
++    try:
++        with open(_metube_sticky_file(), 'w') as f:
++            f.write(path)
++    except OSError:
++        pass
++
++def _metube_adopt_sticky(path):
++    if not config.DOWNLOAD_DIR:
++        config.DOWNLOAD_DIR = path
++        if not config.AUDIO_DOWNLOAD_DIR:
++            config.AUDIO_DOWNLOAD_DIR = path
++        if not config.TEMP_DIR:
++            config.TEMP_DIR = path
++
++_metube_startup_sticky = _metube_load_sticky()
++if _metube_startup_sticky:
++    _metube_adopt_sticky(_metube_startup_sticky)
+ # Align root logger level with Config (keeps a single source of truth).
+ # This re-applies the log level after Config loads, in case LOGLEVEL was
+ # overridden by config file settings or differs from the environment variable.
+@@ -903,6 +943,34 @@
+         bool(o.get('folder')),
+         o['auto_start'],
+     )
++    # [metube-deb patch] Sticky download dir: an absolute folder typed in the web UI
++    # becomes the effective download directory (validated: existing, outside system
++    # locations, writable by the service user -- grant via NAS sharing settings).
++    # It is remembered in STATE_DIR and re-adopted on restart / pre-filled in the UI.
++    # Relative folders keep upstream semantics (a subfolder of the base directory).
++    _metube_folder = o.get('folder') or ''
++    if _metube_folder.startswith('/'):
++        _metube_rp = _metube_validate_custom_root(_metube_folder)
++        if not _metube_rp:
++            log.warning("Rejecting add: folder %s is not a usable download directory", _metube_folder)
++            return web.Response(text=serializer.encode({
++                'status': 'error',
++                'msg': f'"{_metube_folder}" is not a usable download folder. It must already exist, '
++                       'be outside system locations, and be writable by the metube user '
++                       '(grant access in your NAS sharing settings first).',
++            }))
++        if not config.DOWNLOAD_DIR:
++            _metube_save_sticky(_metube_rp)
++            _metube_adopt_sticky(_metube_rp)
++            o['folder'] = ''
++        # else: env-configured base stays authoritative; the absolute folder is
++        # used for this download only (handled in __calc_download_path).
++    elif not config.DOWNLOAD_DIR:
++        log.warning("Rejecting add: DOWNLOAD_DIR is not set")
++        return web.Response(text=serializer.encode({
++            'status': 'error',
++            'msg': 'Set a download folder before downloading.',
++        }))
+     status = await dqueue.add(
+         o['url'],
+         o['download_type'],
+@@ -941,6 +1009,14 @@
+ 
+ @routes.post(config.URL_PREFIX + 'retry')
+ async def retry(request):
++    # [metube-deb patch] Same gate as add(): reject while no download dir is
++    # configured (neither env DOWNLOAD_DIR nor a sticky UI-chosen directory).
++    if not config.DOWNLOAD_DIR and not _metube_load_sticky():
++        log.warning("Rejecting retry: DOWNLOAD_DIR is not set")
++        return web.Response(text=serializer.encode({
++            'status': 'error',
++            'msg': 'Set a download folder before downloading.',
++        }))
+     # Singular by design, unlike the 'ids' batch endpoints: a retry re-extracts
+     # the URL, so it can fail per item, and the caller removes that item's done
+     # record only once it is confirmed re-queued. A batch form would have to
+@@ -1219,6 +1295,11 @@
+ 
+ def get_custom_dirs():
+     cache_ttl_seconds = 5
++    # [metube-deb patch] Skip the filesystem scan while no download directory is
++    # configured (neither env nor sticky), so the dropdown stays empty instead of
++    # leaking runtime-internal paths.
++    if not config.DOWNLOAD_DIR:
++        return {'download_dir': [''], 'audio_download_dir': ['']}
+     now = time.monotonic()
+     cache_key = (
+         config.DOWNLOAD_DIR,
+--- a/app/ytdl.py
++++ b/app/ytdl.py
+@@ -1,5 +1,26 @@
+ import os
+ import shutil
++
++# [metube-deb patch] Validation for UI-entered absolute download directories.
++# Usable = absolute, no ".." traversal, resolves outside system/runtime locations,
++# and is an existing directory writable by the current (unprivileged) user --
++# i.e. the NAS admin granted access through sharing permissions. Returns the
++# realpath on success, None otherwise.
++_METUBE_SYSTEM_PREFIXES = (
++    '/etc', '/usr', '/boot', '/bin', '/sbin', '/lib', '/lib32', '/lib64',
++    '/libx32', '/opt/metube', '/proc', '/sys', '/dev', '/run', '/home',
++)
++
++def _metube_validate_custom_root(path):
++    if not path.startswith('/') or '/../' in path or path.endswith('/..'):
++        return None
++    rp = os.path.realpath(path)
++    for p in _METUBE_SYSTEM_PREFIXES:
++        if rp == p or rp.startswith(p + '/'):
++            return None
++    if not os.path.isdir(rp) or not os.access(rp, os.W_OK | os.X_OK):
++        return None
++    return rp
+ import yt_dlp
+ import collections
+ import collections.abc
+@@ -1600,6 +1621,14 @@
+ 
+     def __calc_download_path(self, download_type, folder):
+         base_directory = self.config.AUDIO_DOWNLOAD_DIR if download_type == 'audio' else self.config.DOWNLOAD_DIR
++        # [metube-deb patch] An absolute folder (from the web UI) is used as-is
++        # for this download after validation, bypassing the base-dir containment
++        # rule which only applies to relative subfolders.
++        if folder and os.path.isabs(folder):
++            _metube_rp = _metube_validate_custom_root(folder)
++            if not _metube_rp:
++                return None, {'status': 'error', 'msg': f'Folder "{folder}" is not a usable download directory (it must exist and be writable by the metube user).'}
++            return _metube_rp, None
+         if folder:
+             if not self.config.CUSTOM_DIRS:
+                 return None, {'status': 'error', 'msg': 'A folder for the download was specified but CUSTOM_DIRS is not true in the configuration.'}

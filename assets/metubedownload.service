@@ -1,0 +1,46 @@
+[Unit]
+Description=MeTube Download - web GUI for yt-dlp
+Documentation=https://github.com/Moechz/metube
+Wants=metube-pot.service
+After=network-online.target metube-pot.service
+
+[Service]
+Type=simple
+User=metube
+Group=metube
+EnvironmentFile=-/etc/metube/metube.env
+WorkingDirectory=/opt/metube
+ExecStart=/usr/bin/metube
+Restart=on-failure
+RestartSec=5
+# 与上游容器默认一致；如需下载文件对同组用户可写，可在 drop-in 中改为 0000
+UMask=0022
+
+# ---------- 权限最小化（沙箱加固） ----------
+NoNewPrivileges=true
+# /usr /boot /etc 只读；/opt/metube 属 root、metube 用户天然只读；
+# 自定义下载目录（/var/lib/metube、任意共享卷路径等）不受影响
+ProtectSystem=full
+# /home 整体只读（护住用户家目录其他内容）；若下载目录设在 /home 下，
+# 由 metube-apply-config 生成的 drop-in(ReadWritePaths) 精确重开写权限
+ProtectHome=read-only
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictNamespaces=true
+LockPersonality=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+# 说明: 未启用 SystemCallFilter/MemoryDenyWriteExecute——
+# yt-dlp 需派生 ffmpeg/aria2/deno 子进程，过度收紧易误伤，留待真机长期观察后决定
+
+[Install]
+WantedBy=multi-user.target

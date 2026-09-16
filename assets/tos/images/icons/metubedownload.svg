@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" id="metube-app-icon" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="MeTube">
+  <defs>
+    <linearGradient id="base" x1="64" y1="40" x2="448" y2="472" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fca5a5"/>
+      <stop offset=".52" stop-color="#ef4444"/>
+      <stop offset="1" stop-color="#b91c1c"/>
+    </linearGradient>
+    <radialGradient id="sheen" cx=".24" cy=".12" r=".82">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".45"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="16" y="16" width="480" height="480" rx="64" ry="64" fill="url(#base)"/>
+  <rect x="16" y="16" width="480" height="480" rx="64" ry="64" fill="url(#sheen)"/>
+  <g transform="translate(106,106) scale(0.6,0.6)">
+    <g transform="translate(0.000000,500.000000) scale(0.100000,-0.100000)"
+fill="#ffffff" stroke="none">
+<path d="M1945 4260 c-698 -17 -1097 -40 -1273 -76 -406 -81 -580 -284 -649
+-754 -21 -142 -30 -1102 -14 -1484 17 -392 44 -570 111 -728 103 -241 278
+-360 620 -422 224 -41 740 -65 1400 -66 405 0 1617 27 1800 40 284 21 532 72
+670 137 227 108 341 372 380 883 13 167 13 1199 0 1392 -22 331 -54 488 -131
+647 -87 178 -213 279 -411 330 -128 33 -435 66 -848 91 -235 15 -1208 20
+-1655 10z m1315 -956 c0 -3 -169 -293 -375 -644 -206 -351 -375 -641 -375
+-644 0 -3 169 -6 375 -6 l375 0 0 -160 0 -160 -760 0 -760 0 0 160 0 160 376
+0 c309 0 375 2 371 13 -3 8 -172 298 -376 645 -204 347 -371 633 -371 636 0 3
+342 6 760 6 418 0 760 -3 760 -6z"/>
+</g>
+  </g>
+</svg>

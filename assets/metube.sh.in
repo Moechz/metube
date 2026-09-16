@@ -1,0 +1,37 @@
+#!/bin/sh
+# /usr/bin/metube - MeTube 启动包装脚本（deb 版 @METUBE_VERSION@）
+#
+# 使用 deb 捆绑的独立 CPython 3.13 运行时，不依赖系统 Python。
+# 行为对齐上游 docker-entrypoint.sh：
+#   - 以 /opt/metube 为 BASE_DIR 提供前端静态文件
+#   - 后台由 metube-pot.service 提供 PO Token 服务
+#   - 退出码 42 = 上游在线升级请求（按市场策略忽略，依赖随 deb 更新）
+METUBE_HOME=/opt/metube
+
+export BASE_DIR="$METUBE_HOME"
+export PATH="$METUBE_HOME/bin:$METUBE_HOME/python/bin:$PATH"
+export PYTHONPATH="$METUBE_HOME:$METUBE_HOME/vendor"
+export PYTHONUNBUFFERED=1
+
+cd "$METUBE_HOME" || exit 1
+PY="$METUBE_HOME/python/bin/python3"
+
+# 兜底：metube.env 里若残留 AUDIO_DOWNLOAD_DIR=/TEMP_DIR= 空值（systemd
+# EnvironmentFile 会把空串原样传入），上游 Config 的 %%DOWNLOAD_DIR 间接
+# 引用只在变量未设置时生效，空串会覆盖它——音频/临时文件会落到 CWD
+# （/opt/metube）且目录下拉框泄漏运行时内部目录。这里把空值统一 unset，
+# 恢复"未设置=跟随 DOWNLOAD_DIR"语义。
+[ -z "${AUDIO_DOWNLOAD_DIR-}" ] && unset AUDIO_DOWNLOAD_DIR || true
+[ -z "${TEMP_DIR-}" ] && unset TEMP_DIR || true
+
+while :; do
+  "$PY" app/main.py
+  rc=$?
+  # 退出码 42 = 上游请求在线升级 yt-dlp 后重启。应用市场策略（S8）禁止
+  # 运行时在线安装依赖：忽略该请求，依赖升级一律随 deb 新版本分发。
+  if [ "$rc" -ne 42 ]; then
+    exit "$rc"
+  fi
+  echo "[metube] yt-dlp 升级请求(exit 42)已忽略：请安装新版本 deb 获取依赖更新" >&2
+  sleep 5
+done

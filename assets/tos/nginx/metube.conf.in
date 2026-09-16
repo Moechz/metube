@@ -1,0 +1,19 @@
+# MeTube for TOS 7 — nginx 反代配置（TOS 应用中心 iframe 集成）
+# 由 deb 安装到 /etc/nginx/conf.d/metube.conf（conffile）
+location /metube/ {
+    proxy_pass http://127.0.0.1:8081/metube/;
+    proxy_http_version 1.1;
+    # WebSocket (socket.io) 升级
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host:$server_port;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    # 下载可能耗时较长
+    proxy_read_timeout 3600s;
+    proxy_send_timeout 3600s;
+    proxy_buffering off;
+    # 允许 TOS 桌面 iframe 嵌入
+    add_header X-Frame-Options "SAMEORIGIN";
+}

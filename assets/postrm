@@ -1,0 +1,32 @@
+#!/bin/sh
+# postrm - 删除/清除后处理（调用留痕见 /var/log/metube-maint.log）
+set -e
+
+mkdir -p /var/log 2>/dev/null || true
+echo "$(date '+%F %T') postrm $*" >> /var/log/metube-maint.log 2>/dev/null || true
+
+if command -v systemctl >/dev/null 2>&1; then
+  if [ "$1" = "remove" ] || [ "$1" = "purge" ]; then
+    systemctl daemon-reload >/dev/null 2>&1 || true
+    rm -f /lib/systemd/system/metube.service /lib/systemd/system/metube-pot.service /lib/systemd/system/metubedownload.service
+  fi
+  if [ "$1" = "purge" ]; then
+    systemctl disable metubedownload.service metube.service metube-pot.service >/dev/null 2>&1 || true
+    systemctl daemon-reload >/dev/null 2>&1 || true
+    rm -rf /var/lib/metube
+    rm -f /etc/metube/metube.env
+    rmdir /etc/metube 2>/dev/null || true
+    rm -rf /etc/systemd/system/metubedownload.service.d /etc/systemd/system/metube.service.d
+    if id metube >/dev/null 2>&1; then
+      deluser --system metube >/dev/null 2>&1 \
+        || userdel metube >/dev/null 2>&1 || true
+    fi
+    # nginx 反代 conffile 已由 dpkg 删除，重载使其生效
+    if command -v nginx >/dev/null 2>&1 && nginx -t >/dev/null 2>&1; then
+      nginx -s reload >/dev/null 2>&1 || true
+    fi
+    # 注：/var/log/metube-maint.log 保留（purge 取证用，记录了谁在何时删的数据）
+  fi
+fi
+
+exit 0

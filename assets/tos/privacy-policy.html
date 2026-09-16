@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MeTube Download — Privacy Policy / 隐私政策</title>
+<style>
+body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:780px;margin:2rem auto;padding:0 1rem;line-height:1.6;color:#222}
+h1{font-size:1.5rem}h2{font-size:1.15rem;margin-top:1.6rem;border-bottom:1px solid #ddd;padding-bottom:.3rem}
+.zh{background:#f7f7f9;padding:.8rem 1rem;border-radius:6px;font-size:.92rem}
+code{background:#f0f0f2;padding:.1rem .3rem;border-radius:3px;font-size:.9em}
+table{border-collapse:collapse;width:100%}td,th{border:1px solid #ccc;padding:.4rem .6rem;text-align:left;font-size:.92rem}
+</style>
+</head>
+<body>
+
+<h1>MeTube Download — Privacy Policy</h1>
+<p class="zh">本文档为双语隐私政策。英文版在前，中文版在后。（This document is bilingual: English first, Chinese below.）</p>
+
+<h2>1. Overview</h2>
+<p>MeTube Download is a video downloader that runs <strong>entirely on your own NAS device</strong> (TerraMaster TOS 7). The application itself does <strong>not collect, transmit, or share any personal data</strong> with the publisher (Moechz) or any third party. There are no analytics, no telemetry, no tracking, and no advertising SDKs.</p>
+
+<h2>2. Data stored on your device</h2>
+<table>
+<tr><th>Data</th><th>Location</th><th>Purpose</th></tr>
+<tr><td>Download URLs, titles, queue &amp; history</td><td><code>/var/lib/metube/state/</code> (queue.json, completed.json)</td><td>Restore your download queue and history after restarts</td></tr>
+<tr><td>Your chosen download folder</td><td><code>/var/lib/metube/state/ui_download_dir</code></td><td>Remember the folder you selected in the web UI</td></tr>
+<tr><td>App configuration</td><td><code>/etc/metube/metube.env</code></td><td>Server settings (port, download directory, output template)</td></tr>
+<tr><td>Downloaded media files</td><td>The folder you chose</td><td>The content you requested</td></tr>
+</table>
+<p>All of this data stays on your device. It is never uploaded by the application.</p>
+
+<h2>3. Your rights: access, correction, deletion</h2>
+<ul>
+<li><strong>Access</strong>: open the web UI, or read the plain-text files listed above (e.g. <code>cat /var/lib/metube/state/completed.json</code>).</li>
+<li><strong>Correction</strong>: edit <code>/etc/metube/metube.env</code> or change the folder in the web UI at any time.</li>
+<li><strong>Deletion</strong>: delete items or clear history in the web UI; remove downloaded files from your folder; <code>apt remove --purge metube</code> (or TOS App Center uninstall) removes configuration and state data. No remote copy exists anywhere because nothing was ever uploaded.</li>
+</ul>
+
+<h2>4. Third-party network access (user-initiated only)</h2>
+<p>The application contacts external services <strong>only when you submit a video URL</strong>:</p>
+<ul>
+<li><strong>Video platforms you choose</strong> (e.g. YouTube, Bilibili — whichever site the URL belongs to): the URL and standard HTTP request metadata are sent directly from your NAS to that platform's servers to fetch media and metadata. Data destination and transmission region are those of the respective platform's global infrastructure.</li>
+<li><strong>Nothing else</strong>: the PO Token helper used for YouTube access runs locally on your device (bundled); no data is sent to Moechz, to any Moechz-operated server, or to any other intermediary.</li>
+</ul>
+
+<h2>5. Accounts and children</h2>
+<p>The application has no user accounts, no login, and does not knowingly serve children's data processing. The web UI is a local service on your LAN.</p>
+
+<h2>6. Changes and contact</h2>
+<p>This policy ships inside the application package and is served at <code>/metube/privacy-policy.html</code> on your device. For questions or reports: <code>https://github.com/Moechz/metube</code> (Issues).</p>
+
+<hr>
+
+<h1>MeTube Download — 隐私政策（中文）</h1>
+
+<h2>1. 概述</h2>
+<p>MeTube Download 是完全运行在<strong>您自己的 NAS 设备</strong>（TerraMaster TOS 7）上的视频下载工具。应用本身<strong>不向发布者（Moechz）或任何第三方收集、传输、共享任何个人数据</strong>：无统计、无遥测、无跟踪、无广告 SDK。</p>
+
+<h2>2. 存储在您设备上的数据</h2>
+<table>
+<tr><th>数据</th><th>位置</th><th>用途</th></tr>
+<tr><td>下载链接、标题、队列与历史</td><td><code>/var/lib/metube/state/</code>（queue.json、completed.json）</td><td>重启后恢复队列与历史</td></tr>
+<tr><td>您选择的下载目录</td><td><code>/var/lib/metube/state/ui_download_dir</code></td><td>记住您在网页端选择的目录</td></tr>
+<tr><td>应用配置</td><td><code>/etc/metube/metube.env</code></td><td>服务器设置（端口、下载目录、命名模板等）</td></tr>
+<tr><td>下载的媒体文件</td><td>您指定的目录</td><td>您请求下载的内容</td></tr>
+</table>
+<p>以上数据全部保留在您的设备上，应用不会将其上传到任何地方。</p>
+
+<h2>3. 您的权利：访问、更正、删除</h2>
+<ul>
+<li><strong>访问</strong>：打开网页界面，或直接读取上述明文文件（如 <code>cat /var/lib/metube/state/completed.json</code>）。</li>
+<li><strong>更正</strong>：编辑 <code>/etc/metube/metube.env</code>，或随时在网页端更换下载目录。</li>
+<li><strong>删除</strong>：在网页端删除条目/清空历史；到下载目录删除文件；卸载应用（<code>apt remove --purge metube</code> 或 TOS 应用中心卸载）会删除配置与状态数据。因从未上传，不存在任何远端副本。</li>
+</ul>
+
+<h2>4. 第三方网络访问（仅由您主动触发）</h2>
+<p>应用<strong>仅在您提交视频链接时</strong>访问外部服务：</p>
+<ul>
+<li><strong>您指定的视频平台</strong>（如 YouTube、Bilibili 等链接所属站点）：链接与标准 HTTP 请求元数据从您的 NAS <strong>直接</strong>发送至该平台服务器以获取媒体与元数据；数据的去向与传输区域即为对应平台的全球基础设施。</li>
+<li><strong>除此之外无任何外部传输</strong>：YouTube 使用的 PO Token 组件在您设备本地运行（随包内置）；不向 Moechz、Moechz 的任何服务器或任何中间方发送数据。</li>
+</ul>
+
+<h2>5. 账号与未成年人</h2>
+<p>应用无用户账号、无登录，不涉及未成年人数据的处理。网页界面是局域网本地服务。</p>
+
+<h2>6. 变更与联系</h2>
+<p>本政策随应用包分发，并在您设备上通过 <code>/metube/privacy-policy.html</code> 提供。问题或举报：<code>https://github.com/Moechz/metube</code>（Issues）。</p>
+
+</body>
+</html>

@@ -1,0 +1,11 @@
+# 构建工作区与产物
+build/
+out/
+
+# macOS
+.DS_Store
+*.swp
+
+# Internal docs (kept local only)
+PROJECT_REQUIREMENTS.md
+PROJECT_HANDOVER_DOCS.md

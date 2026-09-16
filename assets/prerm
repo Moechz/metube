@@ -1,0 +1,14 @@
+#!/bin/sh
+# prerm - 删除/升级前处理：停服务（调用留痕见 /var/log/metube-maint.log）
+set -e
+
+mkdir -p /var/log 2>/dev/null || true
+echo "$(date '+%F %T') prerm $*" >> /var/log/metube-maint.log 2>/dev/null || true
+
+if command -v systemctl >/dev/null 2>&1; then
+  if [ "$1" = "remove" ] || [ "$1" = "upgrade" ] || [ "$1" = "deconfigure" ]; then
+    systemctl stop metubedownload.service metube.service metube-pot.service >/dev/null 2>&1 || true
+  fi
+fi
+
+exit 0

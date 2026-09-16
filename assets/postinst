@@ -1,0 +1,179 @@
+#!/bin/sh
+# postinst - 安装/升级后处理
+#
+# 版本感知 re-provision 模型（2026-09-15 引入，-009 起）：
+#   组件树（/opt/metube 的 app/vendor/python/bin/ui）全部随 deb 分发，dpkg 升级
+#   原子替换——无需运行时 provisioning。postinst 只负责"派生状态"的按需重建：
+#     a) 用户/目录/沙箱 drop-in（由 metube-apply-config 派生）
+#     b) 版本间迁移（按 provisioned 标记只执行未应用的）
+#   用户数据树（/etc/metube/metube.env、/var/lib/metube/state/*、下载目录）
+#   不在任何包文件清单内，升级/重装永不触碰。
+#
+# provisioned 标记: /var/lib/metube/state/provisioned.env
+#   PROVISIONED_DEB_VERSION= 上次 configure 完成的版本
+#   PROVISIONED_MIGRATIONS= 已应用迁移（逗号分隔）
+# 维护脚本调用留痕: /var/log/metube-maint.log（含 prerm/postrm，可观测
+#   TOS 应用中心对升级/卸载实际走 remove / purge / upgrade 哪条路径）
+set -e
+
+MAINT_LOG=/var/log/metube-maint.log
+STATE_DIR=/var/lib/metube/state
+PROV="$STATE_DIR/provisioned.env"
+
+pkg_log() {  # pkg_log <脚本> <动作> [详情...]
+  mkdir -p /var/log 2>/dev/null || true
+  echo "$(date '+%F %T') $*" >> "$MAINT_LOG" 2>/dev/null || true
+}
+pkg_log postinst "$1" "new=@VERSION@${2:+ old=$2}"
+
+prov_get() {  # prov_get <key>
+  grep -a "^$1=" "$PROV" 2>/dev/null | tail -1 | cut -d= -f2-
+}
+
+case "$1" in
+  configure)
+    # 1. 创建系统用户/组（运行服务用）
+    if ! id metube >/dev/null 2>&1; then
+      if command -v adduser >/dev/null 2>&1; then
+        adduser --system --group --home /var/lib/metube --no-create-home --quiet metube
+      elif command -v useradd >/dev/null 2>&1; then
+        useradd --system --user-group --home-dir /var/lib/metube --no-create-home metube
+      else
+        echo "警告: 无法创建 metube 用户（adduser/useradd 均不可用）" >&2
+      fi
+    fi
+
+    # 1.5 配置文件首装引导：仅在不存在时从随包模板复制（升级永不覆盖用户配置；
+    #     这也是 metube.env 不再作为 conffile 的原因：避免 dpkg conffile 交互提示）
+    if [ ! -e /etc/metube/metube.env ] && [ -e /usr/share/metube/metube.env.example ]; then
+      install -m 0644 /usr/share/metube/metube.env.example /etc/metube/metube.env
+      echo "已生成默认配置: /etc/metube/metube.env（DOWNLOAD_DIR 默认留空，需配置后才能下载）"
+      pkg_log postinst bootstrap "metube.env 从模板首装"
+    fi
+
+    # 1.9 读取升级前 provisioned 标记（可能不存在：首装，或从 <009 无标记版本升级）
+    OLD_PROV_VER=$(prov_get PROVISIONED_DEB_VERSION)
+    APPLIED=$(prov_get PROVISIONED_MIGRATIONS)
+    pkg_log postinst provisioned "old_marker=${OLD_PROV_VER:-none} dpkg_says=${2:-none}"
+
+    migration_done() {  # 迁移是否已应用
+      case ",$APPLIED," in *",$1,"*) return 0;; *) return 1;; esac
+    }
+    migration_mark() {  # 标记迁移已应用（APPLIED 未持久化前先更新内存值与文件）
+      case ",$APPLIED," in *",$1,"*) ;; *)
+        APPLIED="${APPLIED:+$APPLIED,}$1"
+        ;;
+      esac
+    }
+
+    # 2. 目录属主 + 沙箱写权限白名单 + 服务启动（幂等）；--initial 表示安装期
+    #    初始化：不创建 download_dir_configured 标记，新装机保持下载拦截，
+    #    直到用户显式配置并运行 metube-apply-config（首次运行闸门）
+    if command -v metube-apply-config >/dev/null 2>&1; then
+      metube-apply-config --initial || echo "警告: metube-apply-config 执行失败，请手动重跑" >&2
+    elif id metube >/dev/null 2>&1; then
+      install -d -o metube -g metube /var/lib/metube/downloads /var/lib/metube/state
+    fi
+
+    # ---- 迁移 M1: 清除旧默认下载路径（≤2026.08.28-8 的包） ----
+    # 旧版曾把 /var/lib/metube/downloads 写成默认值；新版语义为"无默认下载路径"。
+    # 若当前值恰为旧默认（视为未被用户自定义）则重置为空；用户自定义路径不受影响。
+    if ! migration_done m_no_default_download_dir; then
+      if [ -e /etc/metube/metube.env ]; then
+        MT_CUR_DL=$(grep -a '^DOWNLOAD_DIR=' /etc/metube/metube.env | tail -1 | cut -d= -f2-)
+        if [ "$MT_CUR_DL" = "/var/lib/metube/downloads" ]; then
+          sed -i 's|^DOWNLOAD_DIR=.*|DOWNLOAD_DIR=|' /etc/metube/metube.env
+          echo "迁移: 已移除旧默认下载路径（新版无默认路径），请配置 DOWNLOAD_DIR 后运行 metube-apply-config"
+        fi
+      fi
+      migration_mark m_no_default_download_dir
+      pkg_log postinst migration "m_no_default_download_dir applied"
+    fi
+
+    # ---- 每次升级自愈: 沙箱 drop-in（-009 起） ----
+    # 升级期若用户已配置 DOWNLOAD_DIR 但 drop-in 缺失/损坏（如手工误删），
+    # 自动重建（完整跑 metube-apply-config，幂等）。属"按需 re-provision"。
+    if [ -e /etc/metube/metube.env ]; then
+      MT_DL_NOW=$(grep -a '^DOWNLOAD_DIR=' /etc/metube/metube.env | tail -1 | cut -d= -f2-)
+      if [ -n "$MT_DL_NOW" ] && [ ! -f /etc/systemd/system/metubedownload.service.d/99-download-dirs.conf ]; then
+        pkg_log postinst reprovision "drop-in 缺失，重建沙箱白名单"
+        metube-apply-config >/dev/null 2>&1 \
+          && echo "已重建沙箱写权限白名单（此前缺失）" \
+          || echo "警告: drop-in 自愈失败，请手动运行 metube-apply-config" >&2
+      fi
+    fi
+
+    # 3. 用捆绑的 Python 预编译字节码（正确的 3.13 ABI；失败不致命）
+    #    版本感知：同版本重装（marker 未变）时跳过
+    if [ "$OLD_PROV_VER" != "@VERSION@" ]; then
+      /opt/metube/python/bin/python3 -m compileall -q \
+        /opt/metube/app /opt/metube/vendor >/dev/null 2>&1 || true
+    else
+      pkg_log postinst skip "compileall（同版本重装）"
+    fi
+
+    # 4. 升级迁移：旧版曾把服务放在 /lib/systemd/system；另 -010 起主服务单元
+    #    更名为 metubedownload.service（随 app id），清理旧位置/旧注册避免双注册
+    if [ -e /lib/systemd/system/metube.service ] || [ -e /lib/systemd/system/metube-pot.service ]; then
+      systemctl stop metube.service metube-pot.service >/dev/null 2>&1 || true
+      rm -f /lib/systemd/system/metube.service /lib/systemd/system/metube-pot.service
+      pkg_log postinst migration "清理 /lib/systemd/system 旧服务文件"
+    fi
+    if systemctl list-unit-files metube.service >/dev/null 2>&1 \
+       && systemctl is-enabled metube.service >/dev/null 2>&1; then
+      systemctl disable metube.service >/dev/null 2>&1 || true
+      pkg_log postinst migration "停用旧 metube.service 注册（更名为 metubedownload.service）"
+    fi
+    # 旧单元的 drop-in（沙箱白名单）迁移到新单元名下（apply-config 已先行
+    # 生成新 drop-in，故这里只需确保旧目录不再残留）
+    if [ -d /etc/systemd/system/metube.service.d ]; then
+      [ -f /etc/systemd/system/metubedownload.service.d/99-download-dirs.conf ] \
+        || { mkdir -p /etc/systemd/system/metubedownload.service.d
+             cp /etc/systemd/system/metube.service.d/* /etc/systemd/system/metubedownload.service.d/ 2>/dev/null || true; }
+      rm -rf /etc/systemd/system/metube.service.d
+      pkg_log postinst migration "drop-in 已迁移至 metubedownload.service.d（旧目录已清理）"
+    fi
+
+    # 5. 启用并（重）启动服务（主单元 -010 起随 app id 命名）
+    if command -v systemctl >/dev/null 2>&1 && [ -d /etc/systemd/system ]; then
+      systemctl daemon-reload >/dev/null 2>&1 || true
+      systemctl enable metube-pot.service metubedownload.service >/dev/null 2>&1 || true
+      systemctl restart metube-pot.service metubedownload.service >/dev/null 2>&1 || true
+    else
+      echo "警告: 未检测到 systemd，请手动运行 /usr/bin/metube 启动。" >&2
+    fi
+
+    # 6. 重载 nginx（TOS 桌面 iframe 入口：/metube/ 反代）
+    if command -v nginx >/dev/null 2>&1; then
+      if nginx -t >/dev/null 2>&1; then
+        nginx -s reload >/dev/null 2>&1 || true
+      else
+        echo "警告: nginx 配置校验失败，/metube/ 反代未生效，请检查 /etc/nginx/conf.d/metube.conf" >&2
+      fi
+    fi
+
+    # 7. 写回 provisioned 标记（configure 全部步骤成功走到这里才写）
+    mkdir -p "$STATE_DIR" 2>/dev/null || true
+    chown metube:metube "$STATE_DIR" 2>/dev/null || true
+    {
+      echo "# 由 deb postinst 维护；记录已完成的 provisioning 版本与迁移"
+      echo "PROVISIONED_DEB_VERSION=@VERSION@"
+      echo "PROVISIONED_MIGRATIONS=${APPLIED:-}"
+    } > "$PROV" 2>/dev/null || pkg_log postinst warn "无法写入 $PROV"
+    pkg_log postinst done "@VERSION@ migrations=$APPLIED"
+
+    echo ""
+    if [ -n "${2:-}" ]; then
+      echo "MeTube Download @VERSION@ 已完成升级（自 $2）。"
+    else
+      echo "MeTube Download @VERSION@ 已安装。"
+    fi
+    echo "  TOS 桌面 : 应用中心 → MeTube Download（iframe 集成，或浏览器访问 https://<NAS的IP>/metube/）"
+    echo "  直连地址 : http://<NAS的IP>:8081/"
+    echo "  配置文件 : /etc/metube/metube.env（DOWNLOAD_DIR 留空时可在网页 Download Folder 直接输入绝对路径）"
+    echo "  下载目录 : 网页端输入一次即记住；或 /etc/metube/metube.env 的 DOWNLOAD_DIR + metube-apply-config"
+    echo ""
+    ;;
+esac
+
+exit 0

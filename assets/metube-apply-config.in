@@ -1,0 +1,105 @@
+#!/bin/sh
+# /usr/bin/metube-apply-config - 应用 /etc/metube/metube.env 的目录配置（deb 版 @METUBE_VERSION@）
+#
+# 用法（需 root；TOS 上内置管理员直接跑，不要加 sudo）:
+#   metube-apply-config            # 用户手动执行：DOWNLOAD_DIR 必须已设置
+#   metube-apply-config --initial  # 仅 postinst 安装期调用：容忍未设置状态
+#
+# 做四件事（幂等，可重复执行）:
+#   1. 读取配置中的 DOWNLOAD_DIR / STATE_DIR / AUDIO_DOWNLOAD_DIR / TEMP_DIR
+#   2. 创建目录并授权 metube 用户
+#   3. 生成 systemd drop-in（沙箱 ReadWritePaths 白名单，
+#      使下载目录设在 /home 等位置时仍可写——服务单元里 /home 默认只读）
+#   4. daemon-reload 并重启 metube
+#
+# 下载目录闸门：deb 默认 DOWNLOAD_DIR 留空（无默认路径）。未设置时网页点
+# 下载会被服务端拦截并提示先配置；本工具在 DOWNLOAD_DIR 为空时拒绝执行
+# （--initial 除外，仅完成状态目录初始化）。
+set -eu
+
+CONF=/etc/metube/metube.env
+DROPIN_DIR=/etc/systemd/system/metubedownload.service.d
+DROPIN="$DROPIN_DIR/99-download-dirs.conf"
+OLD_DROPIN_DIR=/etc/systemd/system/metube.service.d
+INITIAL=0
+if [ "${1:-}" = "--initial" ]; then
+  INITIAL=1
+fi
+
+[ -f "$CONF" ] || { echo "错误: 配置文件不存在: $CONF" >&2; exit 1; }
+id metube >/dev/null 2>&1 || { echo "错误: metube 用户不存在，请先安装/重装 deb" >&2; exit 1; }
+
+# 解析 KEY=VALUE（systemd EnvironmentFile 语法子集：可选成对引号）
+get_val() {
+  grep -a "^$1=" "$CONF" 2>/dev/null | tail -1 | cut -d= -f2- \
+    | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'\$//"
+}
+
+DOWNLOAD_DIR=$(get_val DOWNLOAD_DIR)
+STATE_DIR=$(get_val STATE_DIR);       : "${STATE_DIR:=/var/lib/metube/state}"
+AUDIO_DOWNLOAD_DIR=$(get_val AUDIO_DOWNLOAD_DIR)
+TEMP_DIR=$(get_val TEMP_DIR)
+
+# 闸门核心：DOWNLOAD_DIR 留空 = 未设置。用户手动执行时必须先填路径。
+if [ -z "$DOWNLOAD_DIR" ]; then
+  if [ "$INITIAL" -eq 1 ]; then
+    echo "==> 安装期初始化：DOWNLOAD_DIR 未设置（下载功能被拦截，属预期）"
+    DIRS="$STATE_DIR"
+  else
+    echo "错误: DOWNLOAD_DIR 未设置。" >&2
+    echo "请编辑 $CONF ，在 DOWNLOAD_DIR= 后填入任意绝对路径（例如 DOWNLOAD_DIR=/你的/任意/路径），" >&2
+    echo "然后重新运行 metube-apply-config 生效。" >&2
+    exit 1
+  fi
+else
+  DIRS="$DOWNLOAD_DIR $STATE_DIR"
+fi
+[ -n "$AUDIO_DOWNLOAD_DIR" ] && DIRS="$DIRS $AUDIO_DOWNLOAD_DIR"
+[ -n "$TEMP_DIR" ]           && DIRS="$DIRS $TEMP_DIR"
+
+echo "==> 目录创建与授权..."
+for d in $DIRS; do
+  case "$d" in /*) ;; *) echo "错误: 路径必须为绝对路径: $d" >&2; exit 1;; esac
+  mkdir -p "$d"
+  chown metube:metube "$d"
+done
+
+echo "==> 生成沙箱写权限白名单: $DROPIN"
+# 服务单元已更名为 metubedownload.service（-010 起随 app id 命名），
+# 迁移旧单元的 drop-in（≤-009 生成在 metube.service.d 下）
+if [ -d "$OLD_DROPIN_DIR" ] && [ ! -f "$DROPIN" ]; then
+  mkdir -p "$DROPIN_DIR"
+  cp "$OLD_DROPIN_DIR"/* "$DROPIN_DIR"/ 2>/dev/null || true
+  echo "已迁移旧服务单元的沙箱白名单 drop-in"
+fi
+mkdir -p "$DROPIN_DIR"
+{
+  echo "# 由 metube-apply-config 自动生成（勿手改；重跑 metube-apply-config 即更新）"
+  echo "[Service]"
+  printf 'ReadWritePaths='
+  first=1
+  for d in $DIRS; do
+    [ "$first" -eq 1 ] || printf ' '
+    printf '"%s"' "$d"
+    first=0
+  done
+  echo
+} > "$DROPIN"
+
+echo "==> 重启服务..."
+systemctl daemon-reload
+systemctl restart metubedownload 2>/dev/null || systemctl restart metube 2>/dev/null || true
+
+if [ "$INITIAL" -eq 1 ] && [ -z "$DOWNLOAD_DIR" ]; then
+  echo "完成 ✅（未配置下载目录：网页下载将被拦截，配置后重跑 metube-apply-config 解除）"
+  exit 0
+fi
+
+sleep 3
+if curl -fsS -o /dev/null http://127.0.0.1:8081/ 2>/dev/null; then
+  echo "完成 ✅  下载目录: $DOWNLOAD_DIR"
+  echo "浏览器访问: http://<NAS的IP>:8081"
+else
+  echo "警告: 服务可能未就绪，请检查: journalctl -u metube -n 50" >&2
+  exit 1
+fi
