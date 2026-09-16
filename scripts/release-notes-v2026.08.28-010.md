@@ -8,6 +8,7 @@ This build is packaged for the **TerraMaster TOS 7 App Center** (x86_64):
 - **Hardened**: runs as a dedicated unprivileged `metube` user inside a systemd sandbox (read-only system paths, no capabilities).
 - **Your download directory, your choice**: no default download path is preset. Type any absolute path into the web UI *Download Folder* field (grant the `metube` user access in your NAS sharing settings first) — it is remembered across restarts. Alternatively set `DOWNLOAD_DIR` in `/etc/metube/metube.env` and run `metube-apply-config`.
 - Downloads stay blocked with a clear message until you explicitly choose a directory.
+- **Privacy policy**: no data collection; a bilingual (EN/中文) privacy policy ships with the app and is reachable from a visible *Privacy Policy* link in the web UI footer, both via the App Center entry and direct access.
 
 ## Install
 
@@ -19,9 +20,9 @@ Then open the TOS desktop → App Center → **MeTube Download**, or browse to `
 
 ## Verification
 
-- MD5: `ed281b54712668ad6ce423bf83e2520b`
-- SHA-256: `60fdc90f79581f937f5ceb34bd08468a75ebd23cb2a5de2b5a3aef6483f27758`
-- Tested end-to-end on TerraMaster TOS 7: App Center integration, download gate, UI-chosen sticky download directory (survives restarts and page reloads), real downloads to NAS shared folders.
+- MD5: `db5eba18f8c0d91a29662c5a91ac3074`
+- SHA-256: `fe4288523de9546bc82fed74199d36e515cea1317240740f726e68ee0427fa16`
+- Tested end-to-end on TerraMaster TOS 7: App Center integration, download gate, UI-chosen sticky download directory (survives restarts and page reloads), real downloads to NAS shared folders, in-app privacy policy link.
 
 ## Legal
 
