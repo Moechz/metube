@@ -5,15 +5,25 @@
 #
 # 用法:
 #   ./build.sh            # 完整构建，产出 out/metube_<ver>_<arch>.deb
-#   ./build.sh <stage>    # 只跑某个阶段: fetch ui deps stage deb
+#   ./build.sh <stage>    # 只跑某个阶段: fetch ui deps python-src bgutil-src stage deb
 #   ./build.sh info       # 查看当前配置
 #
+# 构建模式（环境变量 BUILD_MODE）:
+#   source  发布模式（CI/Linux）：CPython 从 python.org 官方源码编译、
+#           bgutil-pot 从 Rust 源码编译、Python 依赖从 sdist 构建——包内
+#           所有 ELF 均出自本仓库公开工作流（应用市场 V6 审核要求）
+#   compat  开发模式（默认，macOS 可用）：预编译回退（python-build-
+#           standalone、上游 bgutil release、manylinux wheels），仅供本地
+#           sideload 测试，BUILD-INFO 会标注，不得用于商店提交
+#
 # 阶段说明:
-#   fetch  下载全部外部资源到 build/downloads（有缓存，可重复执行）
-#   ui     用 Node 22 + pnpm 构建 Angular 前端
-#   deps   用 uv 按 uv.lock 交叉安装 Python 依赖到 build/vendor
-#   stage  组装 deb 文件系统树 build/pkgroot
-#   deb    生成最终 .deb（macOS 上用 ar+tar 手工打包）
+#   fetch       下载外部资源到 build/downloads（有缓存，可重复执行）
+#   ui          用 Node 22 + pnpm 构建 Angular 前端
+#   deps        安装 Python 依赖到 build/vendor（source: sdist / compat: wheels）
+#   python-src  [仅Linux] 从 python.org 源码构建 CPython（source 模式用）
+#   bgutil-src  [仅Linux] 从 Rust 源码构建 bgutil-pot（source 模式用）
+#   stage       组装 deb 文件系统树 build/pkgroot
+#   deb         生成最终 .deb（无 dpkg 环境，ar+tar 手工打包）
 # ============================================================
 set -euo pipefail
 
@@ -35,13 +45,11 @@ case "$TARGET_ARCH" in
   amd64)
     UV_PY_PLATFORM="x86_64-unknown-linux-gnu"
     PBS_TRIPLE="x86_64-unknown-linux-gnu"
-    DENO_TRIPLE="x86_64-unknown-linux-gnu"
     BGUTIL_ARCH="x86_64"
     ;;
   arm64)
     UV_PY_PLATFORM="aarch64-unknown-linux-gnu"
     PBS_TRIPLE="aarch64-unknown-linux-gnu"
-    DENO_TRIPLE="aarch64-unknown-linux-gnu"
     BGUTIL_ARCH="aarch64"
     ;;
   *)
@@ -69,9 +77,17 @@ NODE_TARBALL="node-v$NODE_VERSION-$NODE_HOST_PLAT.tar.gz"
 NODE_DIR="$TOOLS_DIR/node-v$NODE_VERSION-$NODE_HOST_PLAT"
 UV_DIR="$TOOLS_DIR/uv"
 PY_RUNTIME_TARBALL="cpython-$PBS_PYTHON+$PBS_TAG-$PBS_TRIPLE-install_only_stripped.tar.gz"
-DENO_ZIP="deno-$DENO_TRIPLE.zip"
 BGUTIL_BIN="bgutil-pot-linux-$BGUTIL_ARCH"
 BGUTIL_ZIP="bgutil-ytdlp-pot-provider-rs.zip"
+
+# 构建模式（见文件头）；source 仅限 Linux（CI runner）
+BUILD_MODE="${BUILD_MODE:-compat}"
+if [ "$BUILD_MODE" = "source" ] && [ "$(uname -s)" != "Linux" ]; then
+  die "BUILD_MODE=source 仅支持 Linux（CI ubuntu runner）；本地开发用默认 compat"
+fi
+# 源码构建产物目录（python-src / bgutil-src 阶段产出，stage 优先取用）
+SRC_PY_ROOT="$DL_DIR/cpython-src/$PBS_PYTHON-$TARGET_ARCH"
+SRC_BGUTIL_ROOT="$DL_DIR/bgutil-src/$BGUTIL_VERSION-$TARGET_ARCH"
 DEB_FILE="$OUT_DIR/metube_${METUBE_VERSION}-${PKG_RELEASE}_${TARGET_ARCH}.deb"
 
 log()  { printf '\033[1;32m==>\033[0m %s\n' "$*"; }
@@ -117,15 +133,13 @@ stage_fetch() {
   fetch "https://github.com/astral-sh/uv/releases/latest/download/$UV_HOST_ASSET" \
         "$DL_DIR/$UV_HOST_ASSET"
 
-  # 4. 独立 CPython 3.13（目标平台，进入 deb）
-  fetch "https://github.com/astral-sh/python-build-standalone/releases/download/$PBS_TAG/$PY_RUNTIME_TARBALL" \
-        "$DL_DIR/$PY_RUNTIME_TARBALL"
+  # 4. 独立 CPython 3.13（compat 回退用；source 模式由 python-src 从官方源码构建）
+  if [ ! -x "$SRC_PY_ROOT/python/bin/python3" ]; then
+    fetch "https://github.com/astral-sh/python-build-standalone/releases/download/$PBS_TAG/$PY_RUNTIME_TARBALL" \
+          "$DL_DIR/$PY_RUNTIME_TARBALL"
+  fi
 
-  # 5. Deno（目标平台，进入 deb）
-  fetch "https://github.com/denoland/deno/releases/download/v$DENO_VERSION/deno-$DENO_TRIPLE.zip" \
-        "$DL_DIR/$DENO_ZIP"
-
-  # 6. bgutil PO Token provider（目标平台，进入 deb）
+  # 5. bgutil PO Token provider（compat 回退用；source 模式由 bgutil-src 从源码构建）
   fetch "https://github.com/jim60105/bgutil-ytdlp-pot-provider-rs/releases/download/$BGUTIL_VERSION/$BGUTIL_BIN" \
         "$DL_DIR/$BGUTIL_BIN"
   fetch "https://github.com/jim60105/bgutil-ytdlp-pot-provider-rs/releases/download/$BGUTIL_VERSION/$BGUTIL_ZIP" \
@@ -152,6 +166,74 @@ stage_fetch() {
     log "解压 MeTube 源码..."
     tar xzf "$DL_DIR/metube-$METUBE_VERSION.tar.gz" -C "$BUILD_DIR"
   fi
+}
+
+# ============================================================
+# 阶段: python-src —— 从 python.org 官方源码构建 CPython（仅 Linux）
+# 产物: build/downloads/cpython-src/<ver>-<arch>/python/（stage 优先取用）
+# ============================================================
+stage_python_src() {
+  [ "$(uname -s)" = "Linux" ] || die "python-src 仅支持 Linux"
+  if [ -f "$SRC_PY_ROOT/.built" ] && [ -x "$SRC_PY_ROOT/python/bin/python3" ]; then
+    log "CPython 源码构建已缓存: $SRC_PY_ROOT"
+    return 0
+  fi
+  [ -n "${CPYTHON_SRC_SHA256:-}" ] || die "config.env 缺少 CPYTHON_SRC_SHA256（官方源码包哈希）"
+
+  local tgz="Python-$PBS_PYTHON.tgz" bdir="$SRC_PY_ROOT/build"
+  fetch "https://www.python.org/ftp/python/$PBS_PYTHON/$tgz" "$DL_DIR/$tgz"
+  log "校验 CPython 源码哈希（config.env 固化值）..."
+  echo "$CPYTHON_SRC_SHA256  $DL_DIR/$tgz" | sha256sum -c - \
+    || die "CPython 源码哈希不匹配（供应链异常？）"
+
+  rm -rf "$bdir" "$SRC_PY_ROOT/python"
+  mkdir -p "$bdir"
+  tar xzf "$DL_DIR/$tgz" -C "$bdir" --strip-components=1
+  log "configure + make CPython $PBS_PYTHON（约 15-25 分钟）..."
+  ( cd "$bdir"
+    ./configure --prefix="$SRC_PY_ROOT/python" \
+                --disable-test-modules --with-ensurepip=no
+    make -j"$(nproc)"
+    make install
+  )
+  find "$SRC_PY_ROOT/python" -type f \( -name "python3*" -o -name "*.so" \) \
+    -exec strip --strip-unneeded {} + 2>/dev/null || true
+  rm -rf "$SRC_PY_ROOT/python/lib/python3.13/test" \
+         "$SRC_PY_ROOT/python/lib/python3.13/idlelib" \
+         "$SRC_PY_ROOT/python/lib/python3.13/tkinter" \
+         "$SRC_PY_ROOT/python/lib/python3.13/turtledemo"
+  "$SRC_PY_ROOT/python/bin/python3" -c \
+    "import sys,sqlite3,ssl,ctypes,bz2,lzma,zlib; print('CPython 自检通过:', sys.version.split()[0])" \
+    || die "CPython 源码构建自检失败"
+  touch "$SRC_PY_ROOT/.built"
+  log "CPython 源码构建完成: $SRC_PY_ROOT/python"
+}
+
+# ============================================================
+# 阶段: bgutil-src —— 从 Rust 源码构建 bgutil-pot（仅 Linux）
+# 产物: build/downloads/bgutil-src/<ver>-<arch>/bgutil-pot（stage 优先取用）
+# ============================================================
+stage_bgutil_src() {
+  [ "$(uname -s)" = "Linux" ] || die "bgutil-src 仅支持 Linux"
+  command -v cargo >/dev/null 2>&1 || die "需要 Rust 工具链（cargo）"
+  if [ -f "$SRC_BGUTIL_ROOT/.built" ] && [ -x "$SRC_BGUTIL_ROOT/bgutil-pot" ]; then
+    log "bgutil-pot 源码构建已缓存: $SRC_BGUTIL_ROOT"
+    return 0
+  fi
+  rm -rf "$SRC_BGUTIL_ROOT"
+  mkdir -p "$SRC_BGUTIL_ROOT"
+  git clone --depth 1 --branch "$BGUTIL_VERSION" \
+    https://github.com/jim60105/bgutil-ytdlp-pot-provider-rs "$SRC_BGUTIL_ROOT/src"
+  ( cd "$SRC_BGUTIL_ROOT/src" && cargo build --release --locked )
+  local bin
+  bin=$(find "$SRC_BGUTIL_ROOT/src/target/release" -maxdepth 1 -type f -executable -name "*pot*" | head -1)
+  [ -n "$bin" ] || die "未找到构建出的 bgutil-pot 二进制"
+  strip --strip-unneeded "$bin"
+  cp "$bin" "$SRC_BGUTIL_ROOT/bgutil-pot"
+  chmod 0755 "$SRC_BGUTIL_ROOT/bgutil-pot"
+  git -C "$SRC_BGUTIL_ROOT/src" rev-parse HEAD > "$SRC_BGUTIL_ROOT/.commit"
+  rm -rf "$SRC_BGUTIL_ROOT/src"
+  log "bgutil-pot 源码构建完成: $SRC_BGUTIL_ROOT/bgutil-pot ($(cut -c1-12 "$SRC_BGUTIL_ROOT/.commit"))"
 }
 
 # ============================================================
@@ -251,23 +333,42 @@ stage_deps() {
   local uv="$UV_DIR/uv"
   [ -x "$uv" ] || stage_fetch
 
-  log "从 uv.lock 导出锁定版本依赖..."
+  log "从 uv.lock 导出锁定版本依赖（剔除 deno——运行时不使用，见 BUILD-INFO）..."
   ( cd "$SRC_DIR"
     "$uv" export --frozen --no-dev --no-hashes --no-emit-project \
       --format requirements-txt -o "$BUILD_DIR/requirements.txt"
   )
+  grep -v '^deno==' "$BUILD_DIR/requirements.txt" > "$BUILD_DIR/requirements.nodeps"
+  mv "$BUILD_DIR/requirements.nodeps" "$BUILD_DIR/requirements.txt"
 
-  log "交叉安装 Python 依赖到 build/vendor（目标: $UV_PY_PLATFORM / py3.13）..."
   rm -rf "$VENDOR_DIR"
-  # 国内网络可 export UV_DEFAULT_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple
-  "$uv" pip install \
-    -r "$BUILD_DIR/requirements.txt" \
-    --python-version 3.13 \
-    --python-platform "$UV_PY_PLATFORM" \
-    --no-compile \
-    --target "$VENDOR_DIR"
+  if [ "$BUILD_MODE" = "source" ]; then
+    # source 模式：用本仓库 CI 从官方源码构建的 CPython，逐包从 sdist 编译
+    # （所有 ELF 出自本工作流——V6 要求；uv 构建隔离仅拉取构建工具，不入包）
+    local pybin="$SRC_PY_ROOT/python/bin/python3"
+    [ -x "$pybin" ] || die "source 模式需先运行: ./build.sh python-src"
+    log "从 sdist 构建 Python 依赖到 build/vendor（curl-cffi 较慢，约 10-25 分钟）..."
+    "$uv" pip install \
+      -r "$BUILD_DIR/requirements.txt" \
+      --python "$pybin" \
+      --no-binary=:all: \
+      --no-compile \
+      --target "$VENDOR_DIR"
+  else
+    # compat 模式：manylinux wheels 交叉安装（开发用）
+    log "交叉安装 Python 依赖到 build/vendor（目标: $UV_PY_PLATFORM / py3.13）..."
+    # 国内网络可 export UV_DEFAULT_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple
+    "$uv" pip install \
+      -r "$BUILD_DIR/requirements.txt" \
+      --python-version 3.13 \
+      --python-platform "$UV_PY_PLATFORM" \
+      --no-compile \
+      --target "$VENDOR_DIR"
+  fi
+  echo "$BUILD_MODE" > "$VENDOR_DIR/.build-mode"
 
   [ -d "$VENDOR_DIR/yt_dlp" ] || die "yt-dlp 未安装到 vendor，构建异常"
+  [ ! -e "$VENDOR_DIR/bin/deno" ] || die "vendor 内不应出现 deno（依赖导出过滤失败？）"
   log "Python 依赖安装完成（$(ls "$VENDOR_DIR" | wc -l | tr -d ' ') 个包）"
 }
 
@@ -319,14 +420,32 @@ stage_stage() {
   log "  + vendor/（Python 依赖）"
   cp -R "$VENDOR_DIR" "$M/vendor"
 
-  # 独立 Python 3.13 运行时（tarball 顶层为 python/）
-  log "  + python/（捆绑 CPython $PBS_PYTHON+$PBS_TAG）"
-  tar xzf "$DL_DIR/$PY_RUNTIME_TARBALL" -C "$STAGE_DIR/opt/metube"
+  # Python 3.13 运行时：优先源码构建产物（V6）；compat 回退 python-build-standalone
+  local PYTHON_ORIGIN="srcbuild"
+  if [ -x "$SRC_PY_ROOT/python/bin/python3" ]; then
+    log "  + python/（源码构建: python.org 官方源码 ← 本仓库 CI 编译）"
+    cp -R "$SRC_PY_ROOT/python" "$M/python"
+  elif [ "$BUILD_MODE" = "source" ]; then
+    die "source 模式缺源码构建的 CPython（先运行: ./build.sh python-src）"
+  else
+    warn "compat 模式: 使用 python-build-standalone 预编译运行时（仅供开发测试）"
+    PYTHON_ORIGIN="python-build-standalone"
+    tar xzf "$DL_DIR/$PY_RUNTIME_TARBALL" -C "$STAGE_DIR/opt/metube"
+  fi
 
-  # Deno + bgutil PO Token provider（对齐上游 Docker 镜像行为）
-  log "  + bin/deno, bin/bgutil-pot（PO Token 组件）"
-  unzip -oq "$DL_DIR/$DENO_ZIP" -d "$M/bin"
-  cp "$DL_DIR/$BGUTIL_BIN" "$M/bin/bgutil-pot"
+  # PO Token provider：优先 Rust 源码构建产物；compat 回退上游 release 二进制。
+  # Deno 已移除（-011）：应用与 Rust 版 bgutil 服务均不使用（上游 TS 时代遗产， 2×91MB）
+  local BGUTIL_ORIGIN="srcbuild"
+  if [ -x "$SRC_BGUTIL_ROOT/bgutil-pot" ]; then
+    log "  + bin/bgutil-pot（源码构建: GitHub 源码 ← 本仓库 CI cargo 编译）"
+    cp "$SRC_BGUTIL_ROOT/bgutil-pot" "$M/bin/bgutil-pot"
+  elif [ "$BUILD_MODE" = "source" ]; then
+    die "source 模式缺源码构建的 bgutil-pot（先运行: ./build.sh bgutil-src）"
+  else
+    warn "compat 模式: 使用上游 bgutil 预编译二进制（仅供开发测试）"
+    BGUTIL_ORIGIN="upstream-release"
+    cp "$DL_DIR/$BGUTIL_BIN" "$M/bin/bgutil-pot"
+  fi
   chmod 0755 "$M/bin/bgutil-pot"
 
   log "  + vendor/ 内置 bgutil yt-dlp 插件"
@@ -387,10 +506,72 @@ stage_stage() {
     echo "metube ($METUBE_VERSION-$PKG_RELEASE) TOS; urgency=medium"
     echo ""
     echo "  * 基于 MeTube 上游 $METUBE_VERSION 打包"
-    echo "  * 捆绑 CPython $PBS_PYTHON+$PBS_TAG / Deno v$DENO_VERSION / bgutil-pot $BGUTIL_VERSION"
+    echo "  * 包内运行时全部由公开 CI 从源码构建（CPython 官方源码、bgutil"
+    echo "    Rust 源码、Python 依赖 sdist）——应用市场 V6 整改"
+    echo "  * 移除未使用的 Deno 运行时（Rust 版 PO Token 服务不依赖）"
     echo ""
     echo " -- $MAINTAINER  $(date -R 2>/dev/null || date '+%a, %d %b %Y %H:%M:%S %z')"
   } > "$STAGE_DIR/usr/share/doc/metube/changelog.Debian"
+
+  # BUILD-INFO（随包溯源；compat 构建明确标注不可用于商店提交）
+  local VENDOR_MODE BGUTIL_COMMIT SRCYES
+  VENDOR_MODE=$(cat "$VENDOR_DIR/.build-mode" 2>/dev/null || echo unknown)
+  BGUTIL_COMMIT=""
+  [ "$BGUTIL_ORIGIN" = "srcbuild" ] && [ -f "$SRC_BGUTIL_ROOT/.commit" ] \
+    && BGUTIL_COMMIT=$(cat "$SRC_BGUTIL_ROOT/.commit")
+  SRCYES=no
+  [ "$BUILD_MODE" = "source" ] && [ "$PYTHON_ORIGIN" = "srcbuild" ] \
+    && [ "$BGUTIL_ORIGIN" = "srcbuild" ] && [ "$VENDOR_MODE" = "source" ] && SRCYES=yes
+  cat > "$M/BUILD-INFO" <<EOF
+build-mode: $BUILD_MODE (vendor: $VENDOR_MODE)
+built-from-source: $SRCYES
+built-at: $(date -u '+%Y-%m-%dT%H:%M:%SZ')
+packaging-commit: ${BUILD_GIT_SHA:-local-dev}
+ci-run: ${BUILD_RUN_URL:-local-dev-build}
+metube-upstream: $METUBE_VERSION
+python: $PBS_PYTHON (origin: $PYTHON_ORIGIN, source: https://www.python.org/ftp/python/$PBS_PYTHON/Python-$PBS_PYTHON.tgz, sha256: ${CPYTHON_SRC_SHA256:-n/a})
+bgutil-pot: $BGUTIL_VERSION (origin: $BGUTIL_ORIGIN${BGUTIL_COMMIT:+, commit: $BGUTIL_COMMIT})
+deno: not bundled (unused at runtime)
+EOF
+
+  # PROVENANCE（审计用：包内 ELF 组件的来源与构建方式；行文随实际 origin 变化）
+  local PY_ROW BG_ROW VENDOR_ROW
+  if [ "$PYTHON_ORIGIN" = "srcbuild" ]; then
+    PY_ROW="python.org official source tarball (sha256 ${CPYTHON_SRC_SHA256:-n/a}, pinned in config.env) | this repo's public workflow, stage python-src"
+  else
+    PY_ROW="python-build-standalone release $PBS_TAG (PREBUILT - dev builds only, do not submit) | n/a"
+  fi
+  if [ "$BGUTIL_ORIGIN" = "srcbuild" ]; then
+    BG_ROW="github.com/jim60105/bgutil-ytdlp-pot-provider-rs tag $BGUTIL_VERSION${BGUTIL_COMMIT:+ (commit $BGUTIL_COMMIT)} | this repo's public workflow, stage bgutil-src (cargo build --release --locked)"
+  else
+    BG_ROW="upstream release binary $BGUTIL_VERSION (PREBUILT - dev builds only, do not submit) | n/a"
+  fi
+  if [ "$VENDOR_MODE" = "source" ]; then
+    VENDOR_ROW="PyPI sdists, versions locked by upstream uv.lock | this repo's public workflow, stage deps (uv --no-binary)"
+  else
+    VENDOR_ROW="PyPI manylinux wheels (PREBUILT - dev builds only, do not submit) | n/a"
+  fi
+  cat > "$STAGE_DIR/usr/share/doc/metube/PROVENANCE.md" <<EOF
+# Provenance - how every binary in this package was built
+
+Built by: ${BUILD_RUN_URL:-local build (not CI)}
+Packaging repo: https://github.com/Moechz/metube (commit ${BUILD_GIT_SHA:-unknown})
+Build mode: $BUILD_MODE / vendor: $VENDOR_MODE
+
+| Component | In package | Built from | By |
+|---|---|---|---|
+| CPython runtime | /opt/metube/python | $PY_ROW |
+| PO Token server | /opt/metube/bin/bgutil-pot | $BG_ROW |
+| Python dependencies | /opt/metube/vendor | $VENDOR_ROW |
+| Web UI | /opt/metube/ui | upstream ui/ sources (tag $METUBE_VERSION) + assets/patches | this repo's public workflow, stage ui (pnpm/ng build) |
+| ffmpeg / aria2 | system (not bundled) | Ubuntu/TOS apt packages | dpkg dependencies |
+
+Deno is not bundled: the application and the Rust bgutil server never invoke it.
+
+Audit: rerun the same public GitHub Actions workflow and compare artifacts.
+A compat build (local development) bundles third-party prebuilt runtimes and is
+marked as such in /opt/metube/BUILD-INFO; never submit compat builds to the store.
+EOF
 
   # 清理 macOS 扩展属性，避免污染 tar（AppleDouble / quarantine）
   if command -v xattr >/dev/null 2>&1; then
@@ -414,7 +595,8 @@ stage_verify() {
   local p
   for p in "$M/app/main.py" "$M/ui/dist/metube/browser/index.html" \
            "$M/vendor/yt_dlp" "$M/vendor/yt_dlp_plugins/extractor/getpot_bgutil.py" \
-           "$M/python/bin/python3" "$M/bin/deno" "$M/bin/bgutil-pot" \
+           "$M/python/bin/python3" "$M/bin/bgutil-pot" "$M/BUILD-INFO" \
+           "$STAGE_DIR/usr/share/doc/metube/PROVENANCE.md" \
            "$STAGE_DIR/usr/bin/metube" \
            "$STAGE_DIR/usr/share/metube/metube.env.example" \
            "$STAGE_DIR/etc/systemd/system/metubedownload.service" \
@@ -438,6 +620,16 @@ stage_verify() {
       || { warn "app/ytdl.py 缺少粘性目录补丁标记（补丁未应用？）"; fail=1; }
     grep -q "_metube_startup_sticky" "$M/app/main.py" \
       || { warn "app/main.py 缺少启动采用标记（补丁未应用？）"; fail=1; }
+  fi
+
+  # V6 相关断言：deno 不得随包（运行时未使用）；source 构建必须如实标注
+  if [ -e "$M/bin/deno" ] || [ -e "$M/vendor/bin/deno" ] \
+     || ls "$M"/vendor/deno-*.dist-info >/dev/null 2>&1; then
+    warn "发现 deno 随包（-011 起应彻底移除）"; fail=1
+  fi
+  if [ "$BUILD_MODE" = "source" ]; then
+    grep -q "built-from-source: yes" "$M/BUILD-INFO" \
+      || { warn "source 构建的 BUILD-INFO 未标注 built-from-source: yes"; fail=1; }
   fi
 
   case "$TARGET_ARCH" in
@@ -487,11 +679,11 @@ stage_deb() {
 stage_info() {
   cat <<EOF
 MeTube 版本     : $METUBE_VERSION (deb $METUBE_VERSION-$PKG_RELEASE)
+构建模式       : $BUILD_MODE（source=CI 全源码构建 / compat=开发回退）
 目标架构       : $TARGET_ARCH ($UV_PY_PLATFORM)
-捆绑 CPython   : $PBS_PYTHON+$PBS_TAG
+CPython        : $PBS_PYTHON（source: 源码构建 / compat: PBS $PBS_TAG）
 Node(仅构建)   : v$NODE_VERSION ($NODE_HOST_PLAT)
-Deno           : v$DENO_VERSION ($DENO_TRIPLE)
-bgutil-pot     : $BGUTIL_VERSION ($BGUTIL_ARCH)
+bgutil-pot     : $BGUTIL_VERSION ($BGUTIL_ARCH; source: Rust 源码构建)
 产物           : $DEB_FILE
 EOF
 }
@@ -515,12 +707,19 @@ case "$STAGE" in
   fetch)      stage_fetch ;;
   ui)         stage_ui ;;
   deps)       stage_deps ;;
+  python-src) stage_python_src ;;
+  bgutil-src) stage_bgutil_src ;;
   stage)      stage_stage ;;
   deb)        stage_deb ;;
-  all)        stage_fetch; stage_ui; stage_deps; stage_stage; stage_verify; stage_deb ;;
+  all)
+    if [ "$BUILD_MODE" = "source" ]; then
+      stage_python_src
+      stage_bgutil_src
+    fi
+    stage_fetch; stage_ui; stage_deps; stage_stage; stage_verify; stage_deb ;;
   clean)      stage_clean ;;
   distclean)  stage_distclean ;;
   verify)     stage_verify ;;
   info)       stage_info ;;
-  *)          die "未知阶段: $STAGE（可用: fetch ui deps stage deb all clean distclean info）" ;;
+  *)          die "未知阶段: $STAGE（可用: fetch ui deps python-src bgutil-src stage deb all clean distclean verify info）" ;;
 esac

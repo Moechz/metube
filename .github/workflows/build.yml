@@ -1,6 +1,13 @@
 name: Build deb
 
 # 打 tag（v*）自动构建并发布 Release；也可手动触发（workflow_dispatch）
+#
+# 发布构建一律 BUILD_MODE=source（应用市场 V6 要求）：
+#   - CPython 从 python.org 官方源码编译（哈希在 config.env 固化）
+#   - bgutil-pot 从 Rust 源码编译
+#   - Python 依赖逐包从 sdist 编译（uv --no-binary）
+# 包内所有 ELF 均出自本公开工作流，溯源见包内 /opt/metube/BUILD-INFO
+# 与 /usr/share/doc/metube/PROVENANCE.md
 on:
   push:
     tags: ['v*']
@@ -10,7 +17,7 @@ on:
         description: '目标架构'
         type: choice
         options: [amd64, arm64, both]
-        default: both
+        default: amd64
 
 permissions:
   contents: write   # 发布 Release 用
@@ -18,11 +25,11 @@ permissions:
 jobs:
   build:
     name: build (${{ matrix.arch }})
-    runs-on: ubuntu-latest
+    # 公开仓库免费 arm64 原生 runner；两种架构均在原生环境从源码构建
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
-        # 手动触发可选单架构；tag 触发默认双架构
         arch: ${{ (github.event_name == 'workflow_dispatch'
                     && inputs.target_arch != 'both')
                     && fromJSON(format('["{0}"]', inputs.target_arch))
@@ -31,18 +38,46 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # 缓存外部资源下载（build/downloads），key 含版本配置，升级自动失效
-      - name: Cache downloads
-        uses: actions/cache@v4
-        with:
-          path: build/downloads
-          key: deb-downloads-${{ matrix.arch }}-${{ hashFiles('config.env') }}
+      # CPython / curl-cffi 等源码构建需要的编译依赖
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build perl pkg-config git curl xz-utils \
+            zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev libncurses-dev \
+            liblzma-dev libffi-dev uuid-dev libssl-dev golang-go
+
+      - uses: dtolnay/rust-toolchain@stable
 
       - name: Configure target arch
         run: sed -i "s/^TARGET_ARCH=.*/TARGET_ARCH=${{ matrix.arch }}/" config.env
 
-      - name: Build
+      # 源码构建产物（CPython 树、bgutil 二进制）与下载缓存都放 build/downloads
+      - name: Cache downloads & source-built runtimes
+        uses: actions/cache@v4
+        with:
+          path: build/downloads
+          key: srcbuild-downloads-${{ matrix.arch }}-${{ hashFiles('config.env') }}
+
+      - name: Cache vendor tree
+        uses: actions/cache@v4
+        with:
+          path: build/vendor
+          key: srcbuild-vendor-${{ matrix.arch }}-${{ hashFiles('config.env') }}
+
+      - name: Build runtimes from source (CPython + bgutil-pot)
+        run: |
+          ./build.sh python-src
+          ./build.sh bgutil-src
+        env:
+          BUILD_MODE: source
+
+      - name: Build deb (source mode)
         run: ./build.sh
+        env:
+          BUILD_MODE: source
+          BUILD_GIT_SHA: ${{ github.sha }}
+          BUILD_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
       - name: Verify deb structure
         run: |
@@ -50,6 +85,15 @@ jobs:
           dpkg-deb --info out/*.deb
           dpkg-deb --contents out/*.deb | wc -l
           dpkg-deb --ctrl-tarfile out/*.deb | tar tz   # DEBIAN 脚本清单
+          dpkg-deb --fsys-tarfile out/*.deb | tar xO ./opt/metube/BUILD-INFO
+
+      - name: Prepare release assets (market naming + sha256)
+        run: |
+          cd out
+          cp metube_*_amd64.deb metubedownload_x86_64.deb 2>/dev/null || true
+          cp metube_*_arm64.deb metubedownload_aarch64.deb 2>/dev/null || true
+          for f in *.deb; do sha256sum "$f" > "$f.sha256"; done
+          ls -lh
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -62,5 +106,6 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: out/*.deb
-          generate_release_notes: true
+          files: |
+            out/*.deb
+            out/*.sha256
