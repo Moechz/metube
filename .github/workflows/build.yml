@@ -84,8 +84,12 @@ jobs:
           ls -lh out/
           dpkg-deb --info out/*.deb
           dpkg-deb --contents out/*.deb | wc -l
-          dpkg-deb --ctrl-tarfile out/*.deb | tar tz   # DEBIAN 脚本清单
-          dpkg-deb --fsys-tarfile out/*.deb | tar xO ./opt/metube/BUILD-INFO
+          # 写临时文件再 tar，避免管道 stdin 下 tar 自检压缩格式的怪异行为
+          dpkg-deb --ctrl-tarfile out/*.deb > /tmp/ctrl.tar
+          tar tf /tmp/ctrl.tar                      # DEBIAN 脚本清单
+          dpkg-deb --fsys-tarfile out/*.deb > /tmp/fsys.tar
+          tar xf /tmp/fsys.tar -O ./opt/metube/BUILD-INFO
+          tar xf /tmp/fsys.tar -O ./usr/share/doc/metube/PROVENANCE.md | sed -n '1,20p'
 
       - name: Prepare release assets (market naming + sha256)
         run: |

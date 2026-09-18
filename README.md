@@ -11,14 +11,20 @@ Packages [MeTube](https://github.com/alexta69/metube) (a web download UI for yt-
 
 ## Build
 
-On macOS (Apple Silicon / Intel) or Linux:
+Releases are built **entirely from source in public CI** (`.github/workflows/build.yml`) — the bundled CPython interpreter is compiled from the official python.org source tarball (sha256 pinned in `config.env`), the PO Token server from its Rust sources, and every Python dependency from sdists. Each package embeds `/opt/metube/BUILD-INFO` and `/usr/share/doc/metube/PROVENANCE.md` documenting exactly how every binary was built.
+
+Tag a version (`v<upstream>-<serial>`) to build and publish a release for both amd64 and arm64 automatically, or run the workflow manually.
+
+For local development builds (e.g. on macOS):
 
 ```bash
-./build.sh        # one-shot build → out/metube_<version>_<arch>.deb
+./build.sh        # compat-mode build → out/metube_<version>_<arch>.deb
 ./build.sh info   # show current version/arch configuration
 ```
 
-The build runs in 5 stages (`fetch` → `ui` → `deps` → `stage` → `deb`), each safely re-runnable; downloads are cached under `build/downloads/`.
+`compat` mode falls back to prebuilt third-party runtimes (python-build-standalone, upstream release binaries, manylinux wheels) for iteration speed; such builds are marked in their BUILD-INFO and must not be submitted to the App Center.
+
+The build runs in stages (`fetch` → `ui` → `deps` → `stage` → `deb`, plus `python-src` / `bgutil-src` source-build stages on Linux); each stage is safely re-runnable and downloads are cached under `build/downloads/`.
 
 Common variants:
 

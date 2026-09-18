@@ -117,11 +117,10 @@ ar rcS "$OUTDEB" "$WORK/debian-binary" "$WORK/control.tar.gz" "$WORK/data.tar.xz
 # ---------- 5. 校验 ----------
 if command -v dpkg-deb >/dev/null 2>&1; then
   echo "--- dpkg-deb 校验 ---"
-  dpkg-deb --info "$OUTDEB" | head -20
-  dpkg-deb --contents "$OUTDEB" | head -5
+  # 用 sed 截断而非 head：head 会提前退出触发 dpkg-deb 管道 SIGPIPE（假错误）
+  dpkg-deb --info "$OUTDEB" | sed -n '1,20p'
+  dpkg-deb --contents "$OUTDEB" | sed -n '1,5p'
   echo "..."
-else
-  echo "(本机无 dpkg-deb，跳过校验；deb 可在目标机上用 dpkg -c 查看)"
 fi
 
 echo "打包完成: $OUTDEB ($(du -h "$OUTDEB" | cut -f1), Installed-Size: ${INSTALLED_SIZE_KB}KB)"

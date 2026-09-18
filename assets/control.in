@@ -11,8 +11,8 @@ Homepage: https://github.com/Moechz/metube
 Description: Web GUI for yt-dlp with playlist support
  MeTube is a web GUI for yt-dlp, supporting playlists and quality/format
  selection. This package is self-contained: it bundles a private CPython
- 3.13 runtime, all Python dependencies (pinned via uv.lock), a Deno
- runtime and the bgutil POT provider for YouTube.
+ 3.13 runtime and all Python dependencies (pinned via uv.lock), plus the
+ bgutil POT provider for YouTube.
  .
  Web UI listens on port 8081 by default. Configuration lives in
  /etc/metube/metube.env. No default download directory is preset:
