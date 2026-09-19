@@ -657,6 +657,31 @@ stage_verify() {
   n_macho=$(find "$M" -type f -exec file {} + 2>/dev/null | grep -c "Mach-O" || true)
   [ "$n_macho" -eq 0 ] || { warn "发现 $n_macho 个 Mach-O 文件！"; fail=1; }
 
+  # glibc 符号上限：防止在过新基座（如 ubuntu-24.04, glibc 2.39）上编译导致
+  # 目标机 (TOS 7 / glibc 2.35) "GLIBC_2.xx not found"（-011 真机实锤）
+  if command -v objdump >/dev/null 2>&1 \
+     && objdump --version 2>/dev/null | head -1 | grep -q "GNU" \
+     && [ -n "${GLIBC_FLOOR:-}" ]; then
+    log "校验 glibc 符号上限（目标 ≤ $GLIBC_FLOOR）..."
+    local n_glibc=0 ver bad
+    while IFS= read -r f; do
+      [ -f "$f" ] || continue
+      file "$f" | grep -q ELF || continue
+      bad=""
+      for ver in $(objdump -T "$f" 2>/dev/null | grep -o 'GLIBC_[0-9.]*' | sort -u); do
+        if [ "$(printf '%s\n' "$GLIBC_FLOOR" "${ver#GLIBC_}" | sort -V | tail -1)" != "$GLIBC_FLOOR" ]; then
+          bad="$ver"; break
+        fi
+      done
+      if [ -n "$bad" ]; then
+        warn "glibc 符号超限: ${f#$STAGE_DIR/} 需要 $bad > $GLIBC_FLOOR"
+        n_glibc=$((n_glibc + 1))
+      fi
+    done < <(find "$M" -type f \( -name "python3*" -o -name "*.so*" -o -path "*/bin/*" \))
+    [ "$n_glibc" -eq 0 ] \
+      || { warn "共 $n_glibc 个 ELF 引用了高于 $GLIBC_FLOOR 的 glibc 符号（换 ubuntu:22.04 容器重建）"; fail=1; }
+  fi
+
   if [ "$fail" -eq 0 ]; then
     log "校验通过 ✅"
   else

@@ -1,4 +1,4 @@
-# MeTube Download 2026.08.28-011
+# MeTube Download 2026.08.28-012
 
 MeTube Download is a web-based video downloader powered by yt-dlp: paste a link in your browser to download from YouTube, Bilibili and a thousand more sites — batch queueing, automatic audio extraction, free choice of quality and output format, and channel subscriptions.
 
@@ -21,8 +21,8 @@ Then open the TOS desktop → App Center → **MeTube Download**, or browse to `
 
 ## Verification
 
-- x86_64 md5: `e468280b71c421e7d5a70d8966e35517` (metubedownload_x86_64.deb == metube_2026.08.28-011_amd64.deb)
-- x86_64 sha256: `9146f074c672c7130b57877d449b8c2b775c617bf9be6b386a9a50090c443fba`
+- x86_64 md5: `TBD-md5` (metubedownload_x86_64.deb == metube_2026.08.28-012_amd64.deb)
+- x86_64 sha256: `TBD-sha256`
 - Built entirely by [the public build workflow](https://github.com/Moechz/metube/actions/workflows/build.yml); see the run linked in each package's `BUILD-INFO`.
 - Tested end-to-end on TerraMaster TOS 7: App Center integration, download gate, UI-chosen sticky download directory (survives restarts and page reloads), real downloads to NAS shared folders, in-app privacy policy link, upgrade from -010 preserving all user data and configuration.
 

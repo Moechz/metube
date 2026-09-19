@@ -25,6 +25,10 @@ permissions:
 jobs:
   build:
     name: build (${{ matrix.arch }})
+    # 在 ubuntu:22.04 容器内构建：保证产物 glibc 符号 ≤ 2.35（TOS 7 基座）。
+    # -011 教训：直接用 ubuntu-latest(24.04, glibc 2.39) 编译的 ELF 在目标机
+    # 报 GLIBC_2.38 not found。容器内以 root 运行，apt 不加 sudo。
+    container: ubuntu:22.04
     # 公开仓库免费 arm64 原生 runner；两种架构均在原生环境从源码构建
     runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
     strategy:
@@ -41,9 +45,10 @@ jobs:
       # CPython / curl-cffi 等源码构建需要的编译依赖
       - name: Install build dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            build-essential cmake ninja-build perl pkg-config git curl xz-utils \
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build perl pkg-config git curl xz-utils file \
+            binutils \
             zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev libncurses-dev \
             liblzma-dev libffi-dev uuid-dev libssl-dev golang-go
 
