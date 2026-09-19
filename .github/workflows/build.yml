@@ -57,18 +57,19 @@ jobs:
       - name: Configure target arch
         run: sed -i "s/^TARGET_ARCH=.*/TARGET_ARCH=${{ matrix.arch }}/" config.env
 
-      # 源码构建产物（CPython 树、bgutil 二进制）与下载缓存都放 build/downloads
+      # 源码构建产物（CPython 树、bgutil 二进制）与下载缓存都放 build/downloads；
+      # 缓存键含 build.sh 哈希 —— 构建逻辑变更（如去 strip）必须使旧缓存失效
       - name: Cache downloads & source-built runtimes
         uses: actions/cache@v4
         with:
           path: build/downloads
-          key: srcbuild-downloads-${{ matrix.arch }}-${{ hashFiles('config.env') }}
+          key: srcbuild-downloads-${{ matrix.arch }}-${{ hashFiles('config.env', 'build.sh') }}
 
       - name: Cache vendor tree
         uses: actions/cache@v4
         with:
           path: build/vendor
-          key: srcbuild-vendor-${{ matrix.arch }}-${{ hashFiles('config.env') }}
+          key: srcbuild-vendor-${{ matrix.arch }}-${{ hashFiles('config.env', 'build.sh') }}
 
       - name: Build runtimes from source (CPython + bgutil-pot)
         run: |

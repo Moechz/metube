@@ -228,10 +228,14 @@ stage_bgutil_src() {
   local bin
   bin=$(find "$SRC_BGUTIL_ROOT/src/target/release" -maxdepth 1 -type f -executable -name "*pot*" | head -1)
   [ -n "$bin" ] || die "未找到构建出的 bgutil-pot 二进制"
-  strip --strip-unneeded "$bin"
+  # 注意：不做 strip —— 内嵌 V8 的二进制被 strip 后会 SIGSEGV（-012 真机实锤）
   cp "$bin" "$SRC_BGUTIL_ROOT/bgutil-pot"
   chmod 0755 "$SRC_BGUTIL_ROOT/bgutil-pot"
+  # 冒烟测试：坏二进制不许进缓存，构型/工具链问题构建期就暴露
+  "$SRC_BGUTIL_ROOT/bgutil-pot" --version >/dev/null 2>&1 \
+    || die "bgutil-pot 构建后冒烟测试失败（--version 异常）"
   git -C "$SRC_BGUTIL_ROOT/src" rev-parse HEAD > "$SRC_BGUTIL_ROOT/.commit"
+  rustc --version > "$SRC_BGUTIL_ROOT/.rustc" 2>/dev/null || true
   rm -rf "$SRC_BGUTIL_ROOT/src"
   log "bgutil-pot 源码构建完成: $SRC_BGUTIL_ROOT/bgutil-pot ($(cut -c1-12 "$SRC_BGUTIL_ROOT/.commit"))"
 }
