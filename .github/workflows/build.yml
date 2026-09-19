@@ -52,7 +52,9 @@ jobs:
             zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev libncurses-dev \
             liblzma-dev libffi-dev uuid-dev libssl-dev golang-go
 
-      - uses: dtolnay/rust-toolchain@stable
+      # 锁定 rustc：2026-09 的 stable 编译 bgutil v0.8.1（内嵌 V8）产出即段错误的
+      # 二进制；上游 v0.8.1 发布于 2026-03-12，当时 stable ≈ 1.94，锁此版本
+      - uses: dtolnay/rust-toolchain@1.94
 
       - name: Configure target arch
         run: sed -i "s/^TARGET_ARCH=.*/TARGET_ARCH=${{ matrix.arch }}/" config.env
