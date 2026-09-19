@@ -8,6 +8,13 @@ name: Build deb
 #   - Python 依赖逐包从 sdist 编译（uv --no-binary）
 # 包内所有 ELF 均出自本公开工作流，溯源见包内 /opt/metube/BUILD-INFO
 # 与 /usr/share/doc/metube/PROVENANCE.md
+#
+# 三段式管线（runs 15-18 教训：V8 静态库在 22.04 容器工具链下链接即坏）：
+#   cpython  —— ubuntu:22.04 容器：glibc 2.35 floor 天然满足
+#   bgutil   —— 原生 ubuntu 24.04 runner（与上游官方构建环境一致）；
+#               glibc floor 用 Rust glibc-versioned target(…gnu.2.35) 保证，
+#               并带符号 ceiling 断言
+#   build    —— ubuntu:22.04 容器：组装 + Python 依赖 sdist 构建 + 打 deb
 on:
   push:
     tags: ['v*']
@@ -23,13 +30,9 @@ permissions:
   contents: write   # 发布 Release 用
 
 jobs:
-  build:
-    name: build (${{ matrix.arch }})
-    # 在 ubuntu:22.04 容器内构建：保证产物 glibc 符号 ≤ 2.35（TOS 7 基座）。
-    # -011 教训：直接用 ubuntu-latest(24.04, glibc 2.39) 编译的 ELF 在目标机
-    # 报 GLIBC_2.38 not found。容器内以 root 运行，apt 不加 sudo。
+  cpython:
+    name: cpython (${{ matrix.arch }})
     container: ubuntu:22.04
-    # 公开仓库免费 arm64 原生 runner；两种架构均在原生环境从源码构建
     runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
@@ -38,48 +41,125 @@ jobs:
                     && inputs.target_arch != 'both')
                     && fromJSON(format('["{0}"]', inputs.target_arch))
                     || fromJSON('["amd64", "arm64"]') }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            build-essential perl pkg-config git curl xz-utils file ca-certificates \
+            zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev libncurses-dev \
+            liblzma-dev libffi-dev uuid-dev libssl-dev
+      - name: Configure target arch
+        run: sed -i "s/^TARGET_ARCH=.*/TARGET_ARCH=${{ matrix.arch }}/" config.env
+      - name: Cache cpython source build
+        uses: actions/cache@v4
+        with:
+          path: build/downloads/cpython-src
+          key: cpython-${{ matrix.arch }}-${{ hashFiles('config.env', 'build.sh') }}
+      - name: Build CPython from source
+        run: ./build.sh python-src
+        env:
+          BUILD_MODE: source
+      - name: Upload cpython tree
+        uses: actions/upload-artifact@v4
+        with:
+          name: cpython-${{ matrix.arch }}
+          path: build/downloads/cpython-src
+          if-no-files-found: error
 
+  bgutil:
+    name: bgutil (${{ matrix.arch }})
+    # 原生 runner（不用容器）：V8 130 静态库在 22.04 工具链下链接产物运行即
+    # SIGSEGV（bfd/clang/lld 均复现）；上游官方 release 也在 ubuntu-latest 原生构建
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: ${{ (github.event_name == 'workflow_dispatch'
+                    && inputs.target_arch != 'both')
+                    && fromJSON(format('["{0}"]', inputs.target_arch))
+                    || fromJSON('["amd64", "arm64"]') }}
+    steps:
+      - uses: actions/checkout@v4
+      # 锁定 rustc：上游 v0.8.1 发布于 2026-03-12，当时 stable = 1.94（2026-03-05 发布）
+      - uses: dtolnay/rust-toolchain@1.94
+      - name: Install git & binutils
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends git binutils
+      - name: Configure target arch
+        run: sed -i "s/^TARGET_ARCH=.*/TARGET_ARCH=${{ matrix.arch }}/" config.env
+      - name: Cache bgutil source build
+        uses: actions/cache@v4
+        with:
+          path: build/downloads/bgutil-src
+          key: bgutil-${{ matrix.arch }}-${{ hashFiles('config.env', 'build.sh') }}
+      # --features ffi 必须带：上游官方二进制即 ffi 构建
+      # glibc floor 由 --target *-unknown-linux-gnu.2.35 保证（build.sh 内含符号断言）
+      - name: Build bgutil-pot from source (native, glibc-versioned target)
+        run: ./build.sh bgutil-src
+        env:
+          BUILD_MODE: source
+      - name: Upload bgutil binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: bgutil-${{ matrix.arch }}
+          path: build/downloads/bgutil-src
+          if-no-files-found: error
+
+  build:
+    name: build (${{ matrix.arch }})
+    needs: [cpython, bgutil]
+    container: ubuntu:22.04
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: ${{ (github.event_name == 'workflow_dispatch'
+                    && inputs.target_arch != 'both')
+                    && fromJSON(format('["{0}"]', inputs.target_arch))
+                    || fromJSON('["amd64", "arm64"]') }}
     steps:
       - uses: actions/checkout@v4
 
-      # CPython / curl-cffi 等源码构建需要的编译依赖
       - name: Install build dependencies
         run: |
           apt-get update
           apt-get install -y --no-install-recommends \
             build-essential cmake ninja-build perl pkg-config git curl xz-utils file \
-            ca-certificates binutils python3 unzip clang lld \
+            ca-certificates binutils python3 unzip \
             zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev libncurses-dev \
             liblzma-dev libffi-dev uuid-dev libssl-dev golang-go
-
-      # 锁定 rustc：上游 v0.8.1 发布于 2026-03-12，当时 stable = 1.94（2026-03-05 发布），
-      # 锁此版本对齐上游发布构建；且 cargo build 必须带 --features ffi
-      # （上游官方二进制即 ffi 构建；不带 ffi 冒烟测试 SIGSEGV，见 run 15/16）
-      - uses: dtolnay/rust-toolchain@1.94
 
       - name: Configure target arch
         run: sed -i "s/^TARGET_ARCH=.*/TARGET_ARCH=${{ matrix.arch }}/" config.env
 
-      # 源码构建产物（CPython 树、bgutil 二进制）与下载缓存都放 build/downloads；
-      # 缓存键含 build.sh 哈希 —— 构建逻辑变更（如去 strip）必须使旧缓存失效
-      - name: Cache downloads & source-built runtimes
+      # 源码构建产物由上游 job 传入；其余下载缓存照旧
+      - name: Download cpython artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: cpython-${{ matrix.arch }}
+          path: build/downloads/cpython-src
+      - name: Download bgutil artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: bgutil-${{ matrix.arch }}
+          path: build/downloads/bgutil-src
+      - name: Verify source-build artifacts
+        run: |
+          # download-artifact 会重置权限/时间戳，但内容树与 .built 标记完整；
+          # 显式确认两个源码构建产物可用
+          test -f build/downloads/cpython-src/.built || { echo "cpython artifact missing .built"; ls -R build/downloads/cpython-src | head; exit 1; }
+          test -x build/downloads/bgutil-src/*/bgutil-pot || { echo "bgutil artifact missing binary"; ls -R build/downloads/bgutil-src | head; exit 1; }
+      - name: Cache downloads
         uses: actions/cache@v4
         with:
           path: build/downloads
           key: srcbuild-downloads-${{ matrix.arch }}-${{ hashFiles('config.env', 'build.sh') }}
-
       - name: Cache vendor tree
         uses: actions/cache@v4
         with:
           path: build/vendor
           key: srcbuild-vendor-${{ matrix.arch }}-${{ hashFiles('config.env', 'build.sh') }}
-
-      - name: Build runtimes from source (CPython + bgutil-pot)
-        run: |
-          ./build.sh python-src
-          ./build.sh bgutil-src
-        env:
-          BUILD_MODE: source
 
       - name: Build deb (source mode)
         run: ./build.sh

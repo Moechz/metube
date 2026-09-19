@@ -224,23 +224,32 @@ stage_bgutil_src() {
   mkdir -p "$SRC_BGUTIL_ROOT"
   git clone --depth 1 --branch "$BGUTIL_VERSION" \
     https://github.com/jim60105/bgutil-ytdlp-pot-provider-rs "$SRC_BGUTIL_ROOT/src"
-  # 链接器对齐上游：用 clang + lld 链接 V8 嵌入二进制（deno/rust-v8 官方推荐）。
-  # 22.04 容器自带的 bfd ld(2.38) 链接 v8 130 静态库产出的二进制运行即 SIGSEGV
-  # （runs 15-17 实测；上游在 ubuntu-latest(24.04/binutils 2.42) 原生构建无此问题）。
-  # lld 仅影响链接，glibc 符号 floor 仍由容器 2.35 决定。
+  # 【必须在原生 ubuntu 24.04 runner 构建，不得在 22.04 容器】
+  # V8 130 静态库（rust-v8）在 22.04 工具链（bfd/clang/lld 均试过）链接出的二进制
+  # 运行即 SIGSEGV（runs 15-18 实测）；上游官方二进制也是 ubuntu-latest 原生构建。
+  # glibc floor（≤ 2.35，TOS 7 基座）改用 Rust 官方 glibc-versioned target 保证，
+  # 链接时对 glibc 2.35 的版本化符号约束，编译仍在原生环境（与上游一致）。
   case "$TARGET_ARCH" in
-    amd64)  CARGO_TARGET_DIR_LINKER="CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER" ;;
-    arm64)  CARGO_TARGET_DIR_LINKER="CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER" ;;
+    amd64) RUST_TARGET="x86_64-unknown-linux-gnu.2.35" ;;
+    arm64) RUST_TARGET="aarch64-unknown-linux-gnu.2.35" ;;
+    *) die "未知架构: $TARGET_ARCH" ;;
   esac
-  export "$CARGO_TARGET_DIR_LINKER=clang"
-  export RUSTFLAGS="-C link-arg=-fuse-ld=lld"
-  ( cd "$SRC_BGUTIL_ROOT/src" && cargo build --release --locked --features ffi )
-  local bin
-  bin=$(find "$SRC_BGUTIL_ROOT/src/target/release" -maxdepth 1 -type f -executable -name "*pot*" | head -1)
+  rustup target add "$RUST_TARGET" 2>/dev/null || true
+  ( cd "$SRC_BGUTIL_ROOT/src" \
+      && cargo build --release --locked --features ffi --target "$RUST_TARGET" )
+  local bin="$SRC_BGUTIL_ROOT/src/target/$RUST_TARGET/release/bgutil-pot"
+  [ -f "$bin" ] || bin=$(find "$SRC_BGUTIL_ROOT/src/target/$RUST_TARGET/release" \
+                              -maxdepth 1 -type f -executable -name "bgutil-pot*" | head -1)
   [ -n "$bin" ] || die "未找到构建出的 bgutil-pot 二进制"
   # 注意：不做 strip —— 内嵌 V8 的二进制被 strip 后会 SIGSEGV（-012 真机实锤）
   cp "$bin" "$SRC_BGUTIL_ROOT/bgutil-pot"
   chmod 0755 "$SRC_BGUTIL_ROOT/bgutil-pot"
+  # glibc 符号 ceiling 断言：glibc-versioned target 兑现的契约必须验证
+  local bad_sym
+  bad_sym=$(objdump -T "$SRC_BGUTIL_ROOT/bgutil-pot" 2>/dev/null \
+              | grep -oE 'GLIBC_[0-9.]+' | sed 's/GLIBC_//' | sort -uV \
+              | awk -F. '($1>2) || ($1==2 && $2>35)')
+  [ -z "$bad_sym" ] || die "bgutil-pot glibc 符号超限（需≤2.35）: $bad_sym"
   # 冒烟测试：坏二进制不许进缓存，构型/工具链问题构建期就暴露
   "$SRC_BGUTIL_ROOT/bgutil-pot" --version >/dev/null 2>&1 \
     || die "bgutil-pot 构建后冒烟测试失败（--version 异常）"
