@@ -1,6 +1,6 @@
 [en-us]
   name         = "MeTube Download"
-  auth         = "Moechz"
+  auth         = "alexta69"
   version      = "@@VERSION@@"
   descript     = "MeTube Download is a web-based video downloader powered by yt-dlp: paste a link in your browser to download from YouTube, Bilibili and a thousand more sites, with batch queueing, automatic audio extraction, free choice of quality and output format, and channel subscriptions that track new releases automatically. This build is packaged for the TOS 7 App Center: it bundles a complete Python runtime with all dependencies, runs as a dedicated unprivileged user inside a hardened systemd sandbox, supports fully user-defined download directories at any absolute path, and ships a built-in PO Token provider for reliable YouTube access. Ready out of the box - a capable companion for building your home media library."
   release_note = "Bundles the CPython 3.13 runtime and all dependencies (no system Python requirement), a built-in PO Token provider service, and optional aria2 acceleration. No download directory is preconfigured: type any absolute path into the Download Folder field (grant the metube user access in your NAS sharing settings first) or set DOWNLOAD_DIR in /etc/metube/metube.env and run metube-apply-config. The chosen folder is remembered across restarts."
@@ -8,7 +8,7 @@
 
 [de-de]
   name         = "MeTube Download"
-  auth         = "Moechz"
+  auth         = "alexta69"
   version      = "@@VERSION@@"
   descript     = "MeTube Download is a web-based video downloader powered by yt-dlp: paste a link in your browser to download from YouTube, Bilibili and a thousand more sites, with batch queueing, automatic audio extraction, free choice of quality and output format, and channel subscriptions that track new releases automatically. This build is packaged for the TOS 7 App Center: it bundles a complete Python runtime with all dependencies, runs as a dedicated unprivileged user inside a hardened systemd sandbox, supports fully user-defined download directories at any absolute path, and ships a built-in PO Token provider for reliable YouTube access. Ready out of the box - a capable companion for building your home media library."
   release_note = "Bundles the CPython 3.13 runtime and all dependencies (no system Python requirement), a built-in PO Token provider service, and optional aria2 acceleration. No download directory is preconfigured: type any absolute path into the Download Folder field (grant the metube user access in your NAS sharing settings first) or set DOWNLOAD_DIR in /etc/metube/metube.env and run metube-apply-config. The chosen folder is remembered across restarts."
@@ -16,7 +16,7 @@
 
 [fr-fr]
   name         = "MeTube Download"
-  auth         = "Moechz"
+  auth         = "alexta69"
   version      = "@@VERSION@@"
   descript     = "MeTube Download is a web-based video downloader powered by yt-dlp: paste a link in your browser to download from YouTube, Bilibili and a thousand more sites, with batch queueing, automatic audio extraction, free choice of quality and output format, and channel subscriptions that track new releases automatically. This build is packaged for the TOS 7 App Center: it bundles a complete Python runtime with all dependencies, runs as a dedicated unprivileged user inside a hardened systemd sandbox, supports fully user-defined download directories at any absolute path, and ships a built-in PO Token provider for reliable YouTube access. Ready out of the box - a capable companion for building your home media library."
   release_note = "Bundles the CPython 3.13 runtime and all dependencies (no system Python requirement), a built-in PO Token provider service, and optional aria2 acceleration. No download directory is preconfigured: type any absolute path into the Download Folder field (grant the metube user access in your NAS sharing settings first) or set DOWNLOAD_DIR in /etc/metube/metube.env and run metube-apply-config. The chosen folder is remembered across restarts."
@@ -24,7 +24,7 @@
 
 [es-es]
   name         = "MeTube Download"
-  auth         = "Moechz"
+  auth         = "alexta69"
   version      = "@@VERSION@@"
   descript     = "MeTube Download is a web-based video downloader powered by yt-dlp: paste a link in your browser to download from YouTube, Bilibili and a thousand more sites, with batch queueing, automatic audio extraction, free choice of quality and output format, and channel subscriptions that track new releases automatically. This build is packaged for the TOS 7 App Center: it bundles a complete Python runtime with all dependencies, runs as a dedicated unprivileged user inside a hardened systemd sandbox, supports fully user-defined download directories at any absolute path, and ships a built-in PO Token provider for reliable YouTube access. Ready out of the box - a capable companion for building your home media library."
   release_note = "Bundles the CPython 3.13 runtime and all dependencies (no system Python requirement), a built-in PO Token provider service, and optional aria2 acceleration. No download directory is preconfigured: type any absolute path into the Download Folder field (grant the metube user access in your NAS sharing settings first) or set DOWNLOAD_DIR in /etc/metube/metube.env and run metube-apply-config. The chosen folder is remembered across restarts."
@@ -32,7 +32,7 @@
 
 [it-it]
   name         = "MeTube Download"
-  auth         = "Moechz"
+  auth         = "alexta69"
   version      = "@@VERSION@@"
   descript     = "MeTube Download is a web-based video downloader powered by yt-dlp: paste a link in your browser to download from YouTube, Bilibili and a thousand more sites, with batch queueing, automatic audio extraction, free choice of quality and output format, and channel subscriptions that track new releases automatically. This build is packaged for the TOS 7 App Center: it bundles a complete Python runtime with all dependencies, runs as a dedicated unprivileged user inside a hardened systemd sandbox, supports fully user-defined download directories at any absolute path, and ships a built-in PO Token provider for reliable YouTube access. Ready out of the box - a capable companion for building your home media library."
   release_note = "Bundles the CPython 3.13 runtime and all dependencies (no system Python requirement), a built-in PO Token provider service, and optional aria2 acceleration. No download directory is preconfigured: type any absolute path into the Download Folder field (grant the metube user access in your NAS sharing settings first) or set DOWNLOAD_DIR in /etc/metube/metube.env and run metube-apply-config. The chosen folder is remembered across restarts."
@@ -40,7 +40,7 @@
 
 [tr-tr]
   name         = "MeTube Download"
-  auth         = "Moechz"
+  auth         = "alexta69"
   version      = "@@VERSION@@"
   descript     = "MeTube Download is a web-based video downloader powered by yt-dlp: paste a link in your browser to download from YouTube, Bilibili and a thousand more sites, with batch queueing, automatic audio extraction, free choice of quality and output format, and channel subscriptions that track new releases automatically. This build is packaged for the TOS 7 App Center: it bundles a complete Python runtime with all dependencies, runs as a dedicated unprivileged user inside a hardened systemd sandbox, supports fully user-defined download directories at any absolute path, and ships a built-in PO Token provider for reliable YouTube access. Ready out of the box - a capable companion for building your home media library."
   release_note = "Bundles the CPython 3.13 runtime and all dependencies (no system Python requirement), a built-in PO Token provider service, and optional aria2 acceleration. No download directory is preconfigured: type any absolute path into the Download Folder field (grant the metube user access in your NAS sharing settings first) or set DOWNLOAD_DIR in /etc/metube/metube.env and run metube-apply-config. The chosen folder is remembered across restarts."
@@ -48,7 +48,7 @@
 
 [pt-pt]
   name         = "MeTube Download"
-  auth         = "Moechz"
+  auth         = "alexta69"
   version      = "@@VERSION@@"
   descript     = "MeTube Download is a web-based video downloader powered by yt-dlp: paste a link in your browser to download from YouTube, Bilibili and a thousand more sites, with batch queueing, automatic audio extraction, free choice of quality and output format, and channel subscriptions that track new releases automatically. This build is packaged for the TOS 7 App Center: it bundles a complete Python runtime with all dependencies, runs as a dedicated unprivileged user inside a hardened systemd sandbox, supports fully user-defined download directories at any absolute path, and ships a built-in PO Token provider for reliable YouTube access. Ready out of the box - a capable companion for building your home media library."
   release_note = "Bundles the CPython 3.13 runtime and all dependencies (no system Python requirement), a built-in PO Token provider service, and optional aria2 acceleration. No download directory is preconfigured: type any absolute path into the Download Folder field (grant the metube user access in your NAS sharing settings first) or set DOWNLOAD_DIR in /etc/metube/metube.env and run metube-apply-config. The chosen folder is remembered across restarts."
@@ -56,7 +56,7 @@
 
 [hu-hu]
   name         = "MeTube Download"
-  auth         = "Moechz"
+  auth         = "alexta69"
   version      = "@@VERSION@@"
   descript     = "MeTube Download is a web-based video downloader powered by yt-dlp: paste a link in your browser to download from YouTube, Bilibili and a thousand more sites, with batch queueing, automatic audio extraction, free choice of quality and output format, and channel subscriptions that track new releases automatically. This build is packaged for the TOS 7 App Center: it bundles a complete Python runtime with all dependencies, runs as a dedicated unprivileged user inside a hardened systemd sandbox, supports fully user-defined download directories at any absolute path, and ships a built-in PO Token provider for reliable YouTube access. Ready out of the box - a capable companion for building your home media library."
   release_note = "Bundles the CPython 3.13 runtime and all dependencies (no system Python requirement), a built-in PO Token provider service, and optional aria2 acceleration. No download directory is preconfigured: type any absolute path into the Download Folder field (grant the metube user access in your NAS sharing settings first) or set DOWNLOAD_DIR in /etc/metube/metube.env and run metube-apply-config. The chosen folder is remembered across restarts."
@@ -64,7 +64,7 @@
 
 [nb-no]
   name         = "MeTube Download"
-  auth         = "Moechz"
+  auth         = "alexta69"
   version      = "@@VERSION@@"
   descript     = "MeTube Download is a web-based video downloader powered by yt-dlp: paste a link in your browser to download from YouTube, Bilibili and a thousand more sites, with batch queueing, automatic audio extraction, free choice of quality and output format, and channel subscriptions that track new releases automatically. This build is packaged for the TOS 7 App Center: it bundles a complete Python runtime with all dependencies, runs as a dedicated unprivileged user inside a hardened systemd sandbox, supports fully user-defined download directories at any absolute path, and ships a built-in PO Token provider for reliable YouTube access. Ready out of the box - a capable companion for building your home media library."
   release_note = "Bundles the CPython 3.13 runtime and all dependencies (no system Python requirement), a built-in PO Token provider service, and optional aria2 acceleration. No download directory is preconfigured: type any absolute path into the Download Folder field (grant the metube user access in your NAS sharing settings first) or set DOWNLOAD_DIR in /etc/metube/metube.env and run metube-apply-config. The chosen folder is remembered across restarts."
@@ -72,7 +72,7 @@
 
 [sv-se]
   name         = "MeTube Download"
-  auth         = "Moechz"
+  auth         = "alexta69"
   version      = "@@VERSION@@"
   descript     = "MeTube Download is a web-based video downloader powered by yt-dlp: paste a link in your browser to download from YouTube, Bilibili and a thousand more sites, with batch queueing, automatic audio extraction, free choice of quality and output format, and channel subscriptions that track new releases automatically. This build is packaged for the TOS 7 App Center: it bundles a complete Python runtime with all dependencies, runs as a dedicated unprivileged user inside a hardened systemd sandbox, supports fully user-defined download directories at any absolute path, and ships a built-in PO Token provider for reliable YouTube access. Ready out of the box - a capable companion for building your home media library."
   release_note = "Bundles the CPython 3.13 runtime and all dependencies (no system Python requirement), a built-in PO Token provider service, and optional aria2 acceleration. No download directory is preconfigured: type any absolute path into the Download Folder field (grant the metube user access in your NAS sharing settings first) or set DOWNLOAD_DIR in /etc/metube/metube.env and run metube-apply-config. The chosen folder is remembered across restarts."
@@ -80,7 +80,7 @@
 
 [nl-nl]
   name         = "MeTube Download"
-  auth         = "Moechz"
+  auth         = "alexta69"
   version      = "@@VERSION@@"
   descript     = "MeTube Download is a web-based video downloader powered by yt-dlp: paste a link in your browser to download from YouTube, Bilibili and a thousand more sites, with batch queueing, automatic audio extraction, free choice of quality and output format, and channel subscriptions that track new releases automatically. This build is packaged for the TOS 7 App Center: it bundles a complete Python runtime with all dependencies, runs as a dedicated unprivileged user inside a hardened systemd sandbox, supports fully user-defined download directories at any absolute path, and ships a built-in PO Token provider for reliable YouTube access. Ready out of the box - a capable companion for building your home media library."
   release_note = "Bundles the CPython 3.13 runtime and all dependencies (no system Python requirement), a built-in PO Token provider service, and optional aria2 acceleration. No download directory is preconfigured: type any absolute path into the Download Folder field (grant the metube user access in your NAS sharing settings first) or set DOWNLOAD_DIR in /etc/metube/metube.env and run metube-apply-config. The chosen folder is remembered across restarts."
@@ -88,7 +88,7 @@
 
 [cs-cz]
   name         = "MeTube Download"
-  auth         = "Moechz"
+  auth         = "alexta69"
   version      = "@@VERSION@@"
   descript     = "MeTube Download is a web-based video downloader powered by yt-dlp: paste a link in your browser to download from YouTube, Bilibili and a thousand more sites, with batch queueing, automatic audio extraction, free choice of quality and output format, and channel subscriptions that track new releases automatically. This build is packaged for the TOS 7 App Center: it bundles a complete Python runtime with all dependencies, runs as a dedicated unprivileged user inside a hardened systemd sandbox, supports fully user-defined download directories at any absolute path, and ships a built-in PO Token provider for reliable YouTube access. Ready out of the box - a capable companion for building your home media library."
   release_note = "Bundles the CPython 3.13 runtime and all dependencies (no system Python requirement), a built-in PO Token provider service, and optional aria2 acceleration. No download directory is preconfigured: type any absolute path into the Download Folder field (grant the metube user access in your NAS sharing settings first) or set DOWNLOAD_DIR in /etc/metube/metube.env and run metube-apply-config. The chosen folder is remembered across restarts."
@@ -96,7 +96,7 @@
 
 [pl-pl]
   name         = "MeTube Download"
-  auth         = "Moechz"
+  auth         = "alexta69"
   version      = "@@VERSION@@"
   descript     = "MeTube Download is a web-based video downloader powered by yt-dlp: paste a link in your browser to download from YouTube, Bilibili and a thousand more sites, with batch queueing, automatic audio extraction, free choice of quality and output format, and channel subscriptions that track new releases automatically. This build is packaged for the TOS 7 App Center: it bundles a complete Python runtime with all dependencies, runs as a dedicated unprivileged user inside a hardened systemd sandbox, supports fully user-defined download directories at any absolute path, and ships a built-in PO Token provider for reliable YouTube access. Ready out of the box - a capable companion for building your home media library."
   release_note = "Bundles the CPython 3.13 runtime and all dependencies (no system Python requirement), a built-in PO Token provider service, and optional aria2 acceleration. No download directory is preconfigured: type any absolute path into the Download Folder field (grant the metube user access in your NAS sharing settings first) or set DOWNLOAD_DIR in /etc/metube/metube.env and run metube-apply-config. The chosen folder is remembered across restarts."
@@ -104,7 +104,7 @@
 
 [ru-ru]
   name         = "MeTube Download"
-  auth         = "Moechz"
+  auth         = "alexta69"
   version      = "@@VERSION@@"
   descript     = "MeTube Download is a web-based video downloader powered by yt-dlp: paste a link in your browser to download from YouTube, Bilibili and a thousand more sites, with batch queueing, automatic audio extraction, free choice of quality and output format, and channel subscriptions that track new releases automatically. This build is packaged for the TOS 7 App Center: it bundles a complete Python runtime with all dependencies, runs as a dedicated unprivileged user inside a hardened systemd sandbox, supports fully user-defined download directories at any absolute path, and ships a built-in PO Token provider for reliable YouTube access. Ready out of the box - a capable companion for building your home media library."
   release_note = "Bundles the CPython 3.13 runtime and all dependencies (no system Python requirement), a built-in PO Token provider service, and optional aria2 acceleration. No download directory is preconfigured: type any absolute path into the Download Folder field (grant the metube user access in your NAS sharing settings first) or set DOWNLOAD_DIR in /etc/metube/metube.env and run metube-apply-config. The chosen folder is remembered across restarts."
@@ -112,7 +112,7 @@
 
 [zh-cn]
   name         = "MeTube Download"
-  auth         = "Moechz"
+  auth         = "alexta69"
   version      = "@@VERSION@@"
   descript     = "MeTube 是一款基于 yt-dlp 的网页版视频下载工具：在浏览器中粘贴链接即可下载，支持 YouTube、Bilibili 等上千个网站，可批量添加任务、自动提取音频、自由选择画质与输出格式，并通过订阅功能自动追更频道更新。本版本专为 TOS 7 应用中心打包：内置完整的 Python 运行时与全部依赖，不依赖系统环境；以专用非特权用户运行并施加 systemd 沙箱加固，安全可靠；下载目录支持任意绝对路径，可在配置文件中自由指定并一键生效；内置 PO Token 后台服务，提升 YouTube 访问稳定性。开箱即用，是搭建家庭影音库的得力助手。"
   release_note = "自带 CPython 3.13 运行时与全部依赖（无需系统 Python）、内置 PO Token 后台服务、aria2 可选加速。不预设默认下载目录：在网页 Download Folder 框直接输入任意绝对路径（请先在 NAS 共享权限中授予 metube 用户读写权限），或在 /etc/metube/metube.env 设置 DOWNLOAD_DIR 后执行 metube-apply-config 一键生效。所选目录会被记住，重启后自动恢复。"
@@ -120,7 +120,7 @@
 
 [zh-hk]
   name         = "MeTube Download"
-  auth         = "Moechz"
+  auth         = "alexta69"
   version      = "@@VERSION@@"
   descript     = "MeTube 是一款基於 yt-dlp 的網頁版影片下載工具：在瀏覽器中貼上連結即可下載，支援 YouTube、Bilibili 等上千個網站，可批次新增任務、自動擷取音訊、自由選擇畫質與輸出格式，並透過訂閱功能自動追更頻道更新。本版本專為 TOS 7 應用中心打包：內建完整的 Python 執行時與全部相依套件，不依賴系統環境；以專用非特權使用者執行並施加 systemd 沙箱強化，安全可靠；下載目錄支援任意絕對路徑，可在設定檔中自由指定並一鍵生效；內建 PO Token 背景服務，提升 YouTube 存取穩定性。開箱即用，是搭建家庭影音庫的得力助手。"
   release_note = "內建 CPython 3.13 執行時與全部相依套件（無需系統 Python）、內建 PO Token 背景服務、aria2 可選加速。不預設預設下載目錄：在網頁 Download Folder 框直接輸入任意絕對路徑（請先在 NAS 共享權限中授予 metube 使用者讀寫權限），或在 /etc/metube/metube.env 設定 DOWNLOAD_DIR 後執行 metube-apply-config 一鍵生效。所選目錄會被記住，重啟後自動恢復。"
@@ -128,7 +128,7 @@
 
 [ja-jp]
   name         = "MeTube Download"
-  auth         = "Moechz"
+  auth         = "alexta69"
   version      = "@@VERSION@@"
   descript     = "MeTube Download is a web-based video downloader powered by yt-dlp: paste a link in your browser to download from YouTube, Bilibili and a thousand more sites, with batch queueing, automatic audio extraction, free choice of quality and output format, and channel subscriptions that track new releases automatically. This build is packaged for the TOS 7 App Center: it bundles a complete Python runtime with all dependencies, runs as a dedicated unprivileged user inside a hardened systemd sandbox, supports fully user-defined download directories at any absolute path, and ships a built-in PO Token provider for reliable YouTube access. Ready out of the box - a capable companion for building your home media library."
   release_note = "Bundles the CPython 3.13 runtime and all dependencies (no system Python requirement), a built-in PO Token provider service, and optional aria2 acceleration. No download directory is preconfigured: type any absolute path into the Download Folder field (grant the metube user access in your NAS sharing settings first) or set DOWNLOAD_DIR in /etc/metube/metube.env and run metube-apply-config. The chosen folder is remembered across restarts."
@@ -136,7 +136,7 @@
 
 [ko-kr]
   name         = "MeTube Download"
-  auth         = "Moechz"
+  auth         = "alexta69"
   version      = "@@VERSION@@"
   descript     = "MeTube Download is a web-based video downloader powered by yt-dlp: paste a link in your browser to download from YouTube, Bilibili and a thousand more sites, with batch queueing, automatic audio extraction, free choice of quality and output format, and channel subscriptions that track new releases automatically. This build is packaged for the TOS 7 App Center: it bundles a complete Python runtime with all dependencies, runs as a dedicated unprivileged user inside a hardened systemd sandbox, supports fully user-defined download directories at any absolute path, and ships a built-in PO Token provider for reliable YouTube access. Ready out of the box - a capable companion for building your home media library."
   release_note = "Bundles the CPython 3.13 runtime and all dependencies (no system Python requirement), a built-in PO Token provider service, and optional aria2 acceleration. No download directory is preconfigured: type any absolute path into the Download Folder field (grant the metube user access in your NAS sharing settings first) or set DOWNLOAD_DIR in /etc/metube/metube.env and run metube-apply-config. The chosen folder is remembered across restarts."
@@ -144,7 +144,7 @@
 
 [vi-vn]
   name         = "MeTube Download"
-  auth         = "Moechz"
+  auth         = "alexta69"
   version      = "@@VERSION@@"
   descript     = "MeTube Download is a web-based video downloader powered by yt-dlp: paste a link in your browser to download from YouTube, Bilibili and a thousand more sites, with batch queueing, automatic audio extraction, free choice of quality and output format, and channel subscriptions that track new releases automatically. This build is packaged for the TOS 7 App Center: it bundles a complete Python runtime with all dependencies, runs as a dedicated unprivileged user inside a hardened systemd sandbox, supports fully user-defined download directories at any absolute path, and ships a built-in PO Token provider for reliable YouTube access. Ready out of the box - a capable companion for building your home media library."
   release_note = "Bundles the CPython 3.13 runtime and all dependencies (no system Python requirement), a built-in PO Token provider service, and optional aria2 acceleration. No download directory is preconfigured: type any absolute path into the Download Folder field (grant the metube user access in your NAS sharing settings first) or set DOWNLOAD_DIR in /etc/metube/metube.env and run metube-apply-config. The chosen folder is remembered across restarts."
@@ -152,7 +152,7 @@
 
 [id-id]
   name         = "MeTube Download"
-  auth         = "Moechz"
+  auth         = "alexta69"
   version      = "@@VERSION@@"
   descript     = "MeTube Download is a web-based video downloader powered by yt-dlp: paste a link in your browser to download from YouTube, Bilibili and a thousand more sites, with batch queueing, automatic audio extraction, free choice of quality and output format, and channel subscriptions that track new releases automatically. This build is packaged for the TOS 7 App Center: it bundles a complete Python runtime with all dependencies, runs as a dedicated unprivileged user inside a hardened systemd sandbox, supports fully user-defined download directories at any absolute path, and ships a built-in PO Token provider for reliable YouTube access. Ready out of the box - a capable companion for building your home media library."
   release_note = "Bundles the CPython 3.13 runtime and all dependencies (no system Python requirement), a built-in PO Token provider service, and optional aria2 acceleration. No download directory is preconfigured: type any absolute path into the Download Folder field (grant the metube user access in your NAS sharing settings first) or set DOWNLOAD_DIR in /etc/metube/metube.env and run metube-apply-config. The chosen folder is remembered across restarts."
@@ -160,7 +160,7 @@
 
 [th-th]
   name         = "MeTube Download"
-  auth         = "Moechz"
+  auth         = "alexta69"
   version      = "@@VERSION@@"
   descript     = "MeTube Download is a web-based video downloader powered by yt-dlp: paste a link in your browser to download from YouTube, Bilibili and a thousand more sites, with batch queueing, automatic audio extraction, free choice of quality and output format, and channel subscriptions that track new releases automatically. This build is packaged for the TOS 7 App Center: it bundles a complete Python runtime with all dependencies, runs as a dedicated unprivileged user inside a hardened systemd sandbox, supports fully user-defined download directories at any absolute path, and ships a built-in PO Token provider for reliable YouTube access. Ready out of the box - a capable companion for building your home media library."
   release_note = "Bundles the CPython 3.13 runtime and all dependencies (no system Python requirement), a built-in PO Token provider service, and optional aria2 acceleration. No download directory is preconfigured: type any absolute path into the Download Folder field (grant the metube user access in your NAS sharing settings first) or set DOWNLOAD_DIR in /etc/metube/metube.env and run metube-apply-config. The chosen folder is remembered across restarts."
@@ -168,7 +168,7 @@
 
 [ar-sa]
   name         = "MeTube Download"
-  auth         = "Moechz"
+  auth         = "alexta69"
   version      = "@@VERSION@@"
   descript     = "MeTube Download is a web-based video downloader powered by yt-dlp: paste a link in your browser to download from YouTube, Bilibili and a thousand more sites, with batch queueing, automatic audio extraction, free choice of quality and output format, and channel subscriptions that track new releases automatically. This build is packaged for the TOS 7 App Center: it bundles a complete Python runtime with all dependencies, runs as a dedicated unprivileged user inside a hardened systemd sandbox, supports fully user-defined download directories at any absolute path, and ships a built-in PO Token provider for reliable YouTube access. Ready out of the box - a capable companion for building your home media library."
   release_note = "Bundles the CPython 3.13 runtime and all dependencies (no system Python requirement), a built-in PO Token provider service, and optional aria2 acceleration. No download directory is preconfigured: type any absolute path into the Download Folder field (grant the metube user access in your NAS sharing settings first) or set DOWNLOAD_DIR in /etc/metube/metube.env and run metube-apply-config. The chosen folder is remembered across restarts."
@@ -176,7 +176,7 @@
 
 [he-il]
   name         = "MeTube Download"
-  auth         = "Moechz"
+  auth         = "alexta69"
   version      = "@@VERSION@@"
   descript     = "MeTube Download is a web-based video downloader powered by yt-dlp: paste a link in your browser to download from YouTube, Bilibili and a thousand more sites, with batch queueing, automatic audio extraction, free choice of quality and output format, and channel subscriptions that track new releases automatically. This build is packaged for the TOS 7 App Center: it bundles a complete Python runtime with all dependencies, runs as a dedicated unprivileged user inside a hardened systemd sandbox, supports fully user-defined download directories at any absolute path, and ships a built-in PO Token provider for reliable YouTube access. Ready out of the box - a capable companion for building your home media library."
   release_note = "Bundles the CPython 3.13 runtime and all dependencies (no system Python requirement), a built-in PO Token provider service, and optional aria2 acceleration. No download directory is preconfigured: type any absolute path into the Download Folder field (grant the metube user access in your NAS sharing settings first) or set DOWNLOAD_DIR in /etc/metube/metube.env and run metube-apply-config. The chosen folder is remembered across restarts."
