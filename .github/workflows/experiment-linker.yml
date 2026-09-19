@@ -1,0 +1,48 @@
+name: bgutil-linker-experiment
+on: workflow_dispatch
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: llvm18
+            install: |
+              wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - 2>/dev/null || true
+              echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main" > /etc/apt/sources.list.d/llvm18.list
+              apt-get update
+              apt-get install -y --no-install-recommends clang-18 lld-18
+            env_setup: |
+              export CC=clang-18
+              export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=clang-18
+              export RUSTFLAGS="-C link-arg=-fuse-ld=lld-18"
+          - name: gcc12
+            install: apt-get update && apt-get install -y --no-install-recommends gcc-12 g++-12
+            env_setup: |
+              export CC=gcc-12
+              export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=gcc-12
+    name: ${{ matrix.name }} on 22.04
+    runs-on: ubuntu-latest
+    container: ubuntu:22.04
+    steps:
+      - name: Env info
+        run: ldd --version | head -1
+      - name: Install toolchain
+        run: ${{ matrix.install }}
+      - name: Install deps
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends git curl ca-certificates pkg-config libssl-dev perl make cmake
+      - uses: dtolnay/rust-toolchain@1.94
+      - name: Build bgutil v0.8.1 (upstream recipe)
+        run: |
+          git clone --depth 1 --branch v0.8.1 https://github.com/jim60105/bgutil-ytdlp-pot-provider-rs /tmp/bg
+          cd /tmp/bg
+          ${{ matrix.env_setup }}
+          cargo build --release --locked --features ffi
+      - name: Smoke test
+        run: |
+          /tmp/bg/target/release/bgutil-pot --version && echo "SMOKE OK (${{ matrix.name }})" || echo "SMOKE FAILED rc=$? (${{ matrix.name }})"
+      - name: glibc symbol floor check
+        run: |
+          objdump -T /tmp/bg/target/release/bgutil-pot | grep -oE 'GLIBC_[0-9.]+' | sort -uV | tail -3
