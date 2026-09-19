@@ -5,7 +5,7 @@
   "icon": "/images/icons/metubedownload.svg",
   "name": "MeTube Download",
   "exec": true,
-  "open_path": false,
+  "open_path": true,
   "resize": true,
   "state": false,
   "type": "iframe",
