@@ -48,7 +48,7 @@ jobs:
           apt-get update
           apt-get install -y --no-install-recommends \
             build-essential cmake ninja-build perl pkg-config git curl xz-utils file \
-            binutils \
+            ca-certificates binutils \
             zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev libncurses-dev \
             liblzma-dev libffi-dev uuid-dev libssl-dev golang-go
 
