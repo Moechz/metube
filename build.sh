@@ -224,22 +224,19 @@ stage_bgutil_src() {
   mkdir -p "$SRC_BGUTIL_ROOT"
   git clone --depth 1 --branch "$BGUTIL_VERSION" \
     https://github.com/jim60105/bgutil-ytdlp-pot-provider-rs "$SRC_BGUTIL_ROOT/src"
-  # 【必须在原生 ubuntu 24.04 runner 构建，不得在 22.04 容器】
-  # V8 130 静态库（rust-v8）在 22.04 工具链（bfd/clang/lld 均试过）链接出的二进制
-  # 运行即 SIGSEGV（runs 15-18 实测）；上游官方二进制也是 ubuntu-latest 原生构建。
-  # glibc floor（≤ 2.35，TOS 7 基座）改用 Rust 官方 glibc-versioned target 保证，
-  # 链接时对 glibc 版本的符号约束（2.28 floor ≤ TOS 的 2.35 基座；dist 无 .2.35 变体），编译仍在原生环境（与上游一致）。
+  # 链接器（runs 15-20 对照实验实证）：22.04 默认 gcc-11（以及 clang-14/lld-14）
+  # 链接 v8 130 静态库产出的二进制运行即 SIGSEGV；gcc-12 链接正常（SMOKE OK）。
+  # 用 gcc-12 专用链接，glibc 2.35 floor 仍由 22.04 容器环境保证。
+  command -v gcc-12 >/dev/null 2>&1 || die "需要 gcc-12（apt install gcc-12）供 bgutil-pot 链接"
   case "$TARGET_ARCH" in
-    amd64) RUST_TARGET="x86_64-unknown-linux-gnu.2.28" ;;
-    arm64) RUST_TARGET="aarch64-unknown-linux-gnu.2.28" ;;
+    amd64) export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER="gcc-12" ;;
+    arm64) export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER="gcc-12" ;;
     *) die "未知架构: $TARGET_ARCH" ;;
   esac
-  rustup target add "$RUST_TARGET" || die "rustup 无法安装 glibc-versioned target $RUST_TARGET"
-  ( cd "$SRC_BGUTIL_ROOT/src" \
-      && cargo build --release --locked --features ffi --target "$RUST_TARGET" )
-  local bin="$SRC_BGUTIL_ROOT/src/target/$RUST_TARGET/release/bgutil-pot"
-  [ -f "$bin" ] || bin=$(find "$SRC_BGUTIL_ROOT/src/target/$RUST_TARGET/release" \
-                              -maxdepth 1 -type f -executable -name "bgutil-pot*" | head -1)
+  export CC=gcc-12
+  ( cd "$SRC_BGUTIL_ROOT/src" && cargo build --release --locked --features ffi )
+  local bin
+  bin=$(find "$SRC_BGUTIL_ROOT/src/target/release" -maxdepth 1 -type f -executable -name "bgutil-pot*" | head -1)
   [ -n "$bin" ] || die "未找到构建出的 bgutil-pot 二进制"
   # 注意：不做 strip —— 内嵌 V8 的二进制被 strip 后会 SIGSEGV（-012 真机实锤）
   cp "$bin" "$SRC_BGUTIL_ROOT/bgutil-pot"
