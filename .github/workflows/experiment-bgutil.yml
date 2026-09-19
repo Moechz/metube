@@ -22,12 +22,12 @@ jobs:
           git clone --depth 1 --branch v0.8.1 https://github.com/jim60105/bgutil-ytdlp-pot-provider-rs /tmp/bg
           cd /tmp/bg
           cargo build --release --locked --features ffi
-          BIN=$(find target/release -maxdepth 1 -type f -executable -name "*pot*")
+          BIN=target/release/bgutil-pot
           echo "BIN=$BIN"
           ls -la "$BIN"
           file "$BIN"
           ldd "$BIN" || true
       - name: Smoke test --version
         run: |
-          BIN=$(find /tmp/bg/target/release -maxdepth 1 -type f -executable -name "*pot*")
+          BIN=/tmp/bg/target/release/bgutil-pot
           "$BIN" --version && echo "SMOKE OK" || echo "SMOKE FAILED rc=$?"
