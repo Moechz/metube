@@ -228,13 +228,13 @@ stage_bgutil_src() {
   # V8 130 静态库（rust-v8）在 22.04 工具链（bfd/clang/lld 均试过）链接出的二进制
   # 运行即 SIGSEGV（runs 15-18 实测）；上游官方二进制也是 ubuntu-latest 原生构建。
   # glibc floor（≤ 2.35，TOS 7 基座）改用 Rust 官方 glibc-versioned target 保证，
-  # 链接时对 glibc 2.35 的版本化符号约束，编译仍在原生环境（与上游一致）。
+  # 链接时对 glibc 版本的符号约束（2.28 floor ≤ TOS 的 2.35 基座；dist 无 .2.35 变体），编译仍在原生环境（与上游一致）。
   case "$TARGET_ARCH" in
-    amd64) RUST_TARGET="x86_64-unknown-linux-gnu.2.35" ;;
-    arm64) RUST_TARGET="aarch64-unknown-linux-gnu.2.35" ;;
+    amd64) RUST_TARGET="x86_64-unknown-linux-gnu.2.28" ;;
+    arm64) RUST_TARGET="aarch64-unknown-linux-gnu.2.28" ;;
     *) die "未知架构: $TARGET_ARCH" ;;
   esac
-  rustup target add "$RUST_TARGET" 2>/dev/null || true
+  rustup target add "$RUST_TARGET" || die "rustup 无法安装 glibc-versioned target $RUST_TARGET"
   ( cd "$SRC_BGUTIL_ROOT/src" \
       && cargo build --release --locked --features ffi --target "$RUST_TARGET" )
   local bin="$SRC_BGUTIL_ROOT/src/target/$RUST_TARGET/release/bgutil-pot"
