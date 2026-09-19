@@ -224,6 +224,16 @@ stage_bgutil_src() {
   mkdir -p "$SRC_BGUTIL_ROOT"
   git clone --depth 1 --branch "$BGUTIL_VERSION" \
     https://github.com/jim60105/bgutil-ytdlp-pot-provider-rs "$SRC_BGUTIL_ROOT/src"
+  # 链接器对齐上游：用 clang + lld 链接 V8 嵌入二进制（deno/rust-v8 官方推荐）。
+  # 22.04 容器自带的 bfd ld(2.38) 链接 v8 130 静态库产出的二进制运行即 SIGSEGV
+  # （runs 15-17 实测；上游在 ubuntu-latest(24.04/binutils 2.42) 原生构建无此问题）。
+  # lld 仅影响链接，glibc 符号 floor 仍由容器 2.35 决定。
+  case "$TARGET_ARCH" in
+    amd64)  CARGO_TARGET_DIR_LINKER="CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER" ;;
+    arm64)  CARGO_TARGET_DIR_LINKER="CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER" ;;
+  esac
+  export "$CARGO_TARGET_DIR_LINKER=clang"
+  export RUSTFLAGS="-C link-arg=-fuse-ld=lld"
   ( cd "$SRC_BGUTIL_ROOT/src" && cargo build --release --locked --features ffi )
   local bin
   bin=$(find "$SRC_BGUTIL_ROOT/src/target/release" -maxdepth 1 -type f -executable -name "*pot*" | head -1)
