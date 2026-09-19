@@ -52,8 +52,9 @@ jobs:
             zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev libncurses-dev \
             liblzma-dev libffi-dev uuid-dev libssl-dev golang-go
 
-      # 锁定 rustc：2026-09 的 stable 编译 bgutil v0.8.1（内嵌 V8）产出即段错误的
-      # 二进制；上游 v0.8.1 发布于 2026-03-12，当时 stable ≈ 1.94，锁此版本
+      # 锁定 rustc：上游 v0.8.1 发布于 2026-03-12，当时 stable = 1.94（2026-03-05 发布），
+      # 锁此版本对齐上游发布构建；且 cargo build 必须带 --features ffi
+      # （上游官方二进制即 ffi 构建；不带 ffi 冒烟测试 SIGSEGV，见 run 15/16）
       - uses: dtolnay/rust-toolchain@1.94
 
       - name: Configure target arch

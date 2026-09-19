@@ -224,7 +224,7 @@ stage_bgutil_src() {
   mkdir -p "$SRC_BGUTIL_ROOT"
   git clone --depth 1 --branch "$BGUTIL_VERSION" \
     https://github.com/jim60105/bgutil-ytdlp-pot-provider-rs "$SRC_BGUTIL_ROOT/src"
-  ( cd "$SRC_BGUTIL_ROOT/src" && cargo build --release --locked )
+  ( cd "$SRC_BGUTIL_ROOT/src" && cargo build --release --locked --features ffi )
   local bin
   bin=$(find "$SRC_BGUTIL_ROOT/src/target/release" -maxdepth 1 -type f -executable -name "*pot*" | head -1)
   [ -n "$bin" ] || die "未找到构建出的 bgutil-pot 二进制"
@@ -546,7 +546,7 @@ EOF
     PY_ROW="python-build-standalone release $PBS_TAG (PREBUILT - dev builds only, do not submit) | n/a"
   fi
   if [ "$BGUTIL_ORIGIN" = "srcbuild" ]; then
-    BG_ROW="github.com/jim60105/bgutil-ytdlp-pot-provider-rs tag $BGUTIL_VERSION${BGUTIL_COMMIT:+ (commit $BGUTIL_COMMIT)} | this repo's public workflow, stage bgutil-src (cargo build --release --locked)"
+    BG_ROW="github.com/jim60105/bgutil-ytdlp-pot-provider-rs tag $BGUTIL_VERSION${BGUTIL_COMMIT:+ (commit $BGUTIL_COMMIT)} | this repo's public workflow, stage bgutil-src (cargo build --release --locked --features ffi)"
   else
     BG_ROW="upstream release binary $BGUTIL_VERSION (PREBUILT - dev builds only, do not submit) | n/a"
   fi
