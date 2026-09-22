@@ -24,6 +24,24 @@ PY="$METUBE_HOME/python/bin/python3"
 [ -z "${AUDIO_DOWNLOAD_DIR-}" ] && unset AUDIO_DOWNLOAD_DIR || true
 [ -z "${TEMP_DIR-}" ] && unset TEMP_DIR || true
 
+# -016：默认 JS 运行时。yt-dlp 解 YouTube web client 的 n/sig 签名需 JS 引擎，
+# 而其默认只启用 deno（本包不捆绑）；这里在用户未显式配置 js_runtimes 时
+# 默认注入包内 quickjs-ng(qjs)。幂等：用户已设 js_runtimes 则不覆盖。
+export YTDL_OPTIONS="$("$PY" -c '
+import json, os, sys
+raw = os.environ.get("YTDL_OPTIONS")
+if raw:
+    try:
+        o = json.loads(raw)
+    except Exception:
+        sys.stdout.write(raw)  # 用户 JSON 有误：原样保留，交 app 报错
+        sys.exit(0)
+else:
+    o = {}
+o.setdefault("js_runtimes", {"quickjs": {}})
+sys.stdout.write(json.dumps(o))
+' 2>/dev/null || printf '%s' "${YTDL_OPTIONS-}")"
+
 while :; do
   "$PY" app/main.py
   rc=$?

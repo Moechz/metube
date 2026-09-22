@@ -5,7 +5,7 @@
 #
 # 用法:
 #   ./build.sh            # 完整构建，产出 out/metube_<ver>_<arch>.deb
-#   ./build.sh <stage>    # 只跑某个阶段: fetch ui deps python-src bgutil-src stage deb
+#   ./build.sh <stage>    # 只跑某个阶段: fetch ui deps python-src bgutil-src quickjs-src stage deb
 #   ./build.sh info       # 查看当前配置
 #
 # 构建模式（环境变量 BUILD_MODE）:
@@ -22,6 +22,7 @@
 #   deps        安装 Python 依赖到 build/vendor（source: sdist / compat: wheels）
 #   python-src  [仅Linux] 从 python.org 源码构建 CPython（source 模式用）
 #   bgutil-src  [仅Linux] 从 Rust 源码构建 bgutil-pot（source 模式用）
+#   quickjs-src [仅Linux] 从 quickjs-ng 源码构建 qjs（source 模式用；yt-dlp JS 运行时）
 #   stage       组装 deb 文件系统树 build/pkgroot
 #   deb         生成最终 .deb（无 dpkg 环境，ar+tar 手工打包）
 # ============================================================
@@ -79,6 +80,8 @@ UV_DIR="$TOOLS_DIR/uv"
 PY_RUNTIME_TARBALL="cpython-$PBS_PYTHON+$PBS_TAG-$PBS_TRIPLE-install_only_stripped.tar.gz"
 BGUTIL_BIN="bgutil-pot-linux-$BGUTIL_ARCH"
 BGUTIL_ZIP="bgutil-ytdlp-pot-provider-rs.zip"
+QJS_BIN="qjs-linux-$BGUTIL_ARCH"
+QJS_SRC_TGZ="quickjs-ng-$QUICKJS_VERSION.tar.gz"
 
 # 构建模式（见文件头）；source 仅限 Linux（CI runner）
 BUILD_MODE="${BUILD_MODE:-compat}"
@@ -88,6 +91,7 @@ fi
 # 源码构建产物目录（python-src / bgutil-src 阶段产出，stage 优先取用）
 SRC_PY_ROOT="$DL_DIR/cpython-src/$PBS_PYTHON-$TARGET_ARCH"
 SRC_BGUTIL_ROOT="$DL_DIR/bgutil-src/$BGUTIL_VERSION-$TARGET_ARCH"
+SRC_QJS_ROOT="$DL_DIR/quickjs-src/$QUICKJS_VERSION-$TARGET_ARCH"
 DEB_FILE="$OUT_DIR/metube_${METUBE_VERSION}-${PKG_RELEASE}_${TARGET_ARCH}.deb"
 
 log()  { printf '\033[1;32m==>\033[0m %s\n' "$*"; }
@@ -144,6 +148,13 @@ stage_fetch() {
         "$DL_DIR/$BGUTIL_BIN"
   fetch "https://github.com/jim60105/bgutil-ytdlp-pot-provider-rs/releases/download/$BGUTIL_VERSION/$BGUTIL_ZIP" \
         "$DL_DIR/$BGUTIL_ZIP"
+
+  # 6. quickjs-ng（yt-dlp JS challenge 解密运行时；compat 回退用官方 qjs 二进制，
+  #    source 模式由 quickjs-src 从源码构建）
+  fetch "https://github.com/quickjs-ng/quickjs/releases/download/$QUICKJS_VERSION/$QJS_BIN" \
+        "$DL_DIR/$QJS_BIN"
+  fetch "https://codeload.github.com/quickjs-ng/quickjs/tar.gz/refs/tags/$QUICKJS_VERSION" \
+        "$DL_DIR/$QJS_SRC_TGZ"
 
   # 7. 解压构建工具
   if [ ! -x "$NODE_DIR/bin/node" ]; then
@@ -254,6 +265,42 @@ stage_bgutil_src() {
   rustc --version > "$SRC_BGUTIL_ROOT/.rustc" 2>/dev/null || true
   rm -rf "$SRC_BGUTIL_ROOT/src"
   log "bgutil-pot 源码构建完成: $SRC_BGUTIL_ROOT/bgutil-pot ($(cut -c1-12 "$SRC_BGUTIL_ROOT/.commit"))"
+}
+
+# ============================================================
+# 阶段: quickjs-src —— 从 quickjs-ng 源码编译 qjs（仅 Linux）
+# 产物: build/downloads/quickjs-src/<ver>-<arch>/qjs（stage 优先取用）
+# yt-dlp web client 解 n/sig 挑战的 JS 运行时；C 单文件项目，构建轻
+# ============================================================
+stage_quickjs_src() {
+  [ "$(uname -s)" = "Linux" ] || die "quickjs-src 仅支持 Linux"
+  command -v make >/dev/null 2>&1 || die "需要 make（apt install build-essential）"
+  if [ -f "$SRC_QJS_ROOT/.built" ] && [ -x "$SRC_QJS_ROOT/qjs" ]; then
+    log "qjs 源码构建已缓存: $SRC_QJS_ROOT"
+    return 0
+  fi
+  [ -n "${QUICKJS_SRC_SHA256:-}" ] || die "config.env 缺少 QUICKJS_SRC_SHA256（官方源码包哈希）"
+
+  fetch "https://codeload.github.com/quickjs-ng/quickjs/tar.gz/refs/tags/$QUICKJS_VERSION" \
+        "$DL_DIR/$QJS_SRC_TGZ"
+  log "校验 quickjs-ng 源码哈希（config.env 固化值）..."
+  echo "$QUICKJS_SRC_SHA256  $DL_DIR/$QJS_SRC_TGZ" | sha256sum -c - \
+    || die "quickjs-ng 源码哈希不匹配（供应链异常？）"
+
+  rm -rf "$SRC_QJS_ROOT"
+  mkdir -p "$SRC_QJS_ROOT/src"
+  tar xzf "$DL_DIR/$QJS_SRC_TGZ" -C "$SRC_QJS_ROOT/src" --strip-components=1
+  log "make quickjs-ng qjs（约 1-2 分钟）..."
+  ( cd "$SRC_QJS_ROOT/src" && make -j"$(nproc)" qjs )
+  [ -x "$SRC_QJS_ROOT/src/qjs" ] || die "未找到编译出的 qjs"
+  cp "$SRC_QJS_ROOT/src/qjs" "$SRC_QJS_ROOT/qjs"
+  chmod 0755 "$SRC_QJS_ROOT/qjs"
+  # 冒烟：qjs 能执行 JS；坏产物不许进缓存
+  "$SRC_QJS_ROOT/qjs" -e 'console.log(1+1)' 2>/dev/null | grep -q '^2$' \
+    || die "qjs 构建后冒烟测试失败"
+  rm -rf "$SRC_QJS_ROOT/src"
+  touch "$SRC_QJS_ROOT/.built"
+  log "qjs 源码构建完成: $SRC_QJS_ROOT/qjs"
 }
 
 # ============================================================
@@ -468,6 +515,21 @@ stage_stage() {
   fi
   chmod 0755 "$M/bin/bgutil-pot"
 
+  # quickjs-ng qjs：yt-dlp JS challenge 解密运行时。优先源码构建产物；compat 回退上游 release。
+  # （-016：早期 deno 被误删导致 web client 无 JS runtime；qjs 源码轻、无 V8）
+  local QJS_ORIGIN="srcbuild"
+  if [ -x "$SRC_QJS_ROOT/qjs" ]; then
+    log "  + bin/qjs（源码构建: quickjs-ng 官方源码 ← 本仓库 CI make）"
+    cp "$SRC_QJS_ROOT/qjs" "$M/bin/qjs"
+  elif [ "$BUILD_MODE" = "source" ]; then
+    die "source 模式缺源码构建的 qjs（先运行: ./build.sh quickjs-src）"
+  else
+    warn "compat 模式: 使用上游 quickjs-ng 预编译 qjs（仅供开发测试）"
+    QJS_ORIGIN="upstream-release"
+    cp "$DL_DIR/$QJS_BIN" "$M/bin/qjs"
+  fi
+  chmod 0755 "$M/bin/qjs"
+
   log "  + vendor/ 内置 bgutil yt-dlp 插件"
   unzip -oq "$DL_DIR/$BGUTIL_ZIP" -d "$M/vendor"
 
@@ -527,8 +589,9 @@ stage_stage() {
     echo ""
     echo "  * 基于 MeTube 上游 $METUBE_VERSION 打包"
     echo "  * 包内运行时全部由公开 CI 从源码构建（CPython 官方源码、bgutil"
-    echo "    Rust 源码、Python 依赖 sdist）——应用市场 V6 整改"
-    echo "  * 移除未使用的 Deno 运行时（Rust 版 PO Token 服务不依赖）"
+    echo "    Rust 源码、quickjs-ng C 源码、Python 依赖 sdist）——应用市场 V6 整改"
+    echo "  * -016: 捆绑 quickjs-ng(qjs) 作为 yt-dlp JS 挑战解密运行时，修复"
+    echo "    web client 因缺 JS runtime 导致格式缺失/下载失败（早期 deno 被误删）"
     echo ""
     echo " -- $MAINTAINER  $(date -R 2>/dev/null || date '+%a, %d %b %Y %H:%M:%S %z')"
   } > "$STAGE_DIR/usr/share/doc/metube/changelog.Debian"
@@ -541,7 +604,8 @@ stage_stage() {
     && BGUTIL_COMMIT=$(cat "$SRC_BGUTIL_ROOT/.commit")
   SRCYES=no
   [ "$BUILD_MODE" = "source" ] && [ "$PYTHON_ORIGIN" = "srcbuild" ] \
-    && [ "$BGUTIL_ORIGIN" = "srcbuild" ] && [ "$VENDOR_MODE" = "source" ] && SRCYES=yes
+    && [ "$BGUTIL_ORIGIN" = "srcbuild" ] && [ "$VENDOR_MODE" = "source" ] \
+    && [ "$QJS_ORIGIN" = "srcbuild" ] && SRCYES=yes
   cat > "$M/BUILD-INFO" <<EOF
 build-mode: $BUILD_MODE (vendor: $VENDOR_MODE)
 built-from-source: $SRCYES
@@ -551,11 +615,11 @@ ci-run: ${BUILD_RUN_URL:-local-dev-build}
 metube-upstream: $METUBE_VERSION
 python: $PBS_PYTHON (origin: $PYTHON_ORIGIN, source: https://www.python.org/ftp/python/$PBS_PYTHON/Python-$PBS_PYTHON.tgz, sha256: ${CPYTHON_SRC_SHA256:-n/a})
 bgutil-pot: $BGUTIL_VERSION (origin: $BGUTIL_ORIGIN${BGUTIL_COMMIT:+, commit: $BGUTIL_COMMIT})
-deno: not bundled (unused at runtime)
+quickjs: $QUICKJS_VERSION (origin: $QJS_ORIGIN, source: https://github.com/quickjs-ng/quickjs, sha256: ${QUICKJS_SRC_SHA256:-n/a})
 EOF
 
   # PROVENANCE（审计用：包内 ELF 组件的来源与构建方式；行文随实际 origin 变化）
-  local PY_ROW BG_ROW VENDOR_ROW
+  local PY_ROW BG_ROW QJS_ROW VENDOR_ROW
   if [ "$PYTHON_ORIGIN" = "srcbuild" ]; then
     PY_ROW="python.org official source tarball (sha256 ${CPYTHON_SRC_SHA256:-n/a}, pinned in config.env) | this repo's public workflow, stage python-src"
   else
@@ -565,6 +629,11 @@ EOF
     BG_ROW="github.com/jim60105/bgutil-ytdlp-pot-provider-rs tag $BGUTIL_VERSION${BGUTIL_COMMIT:+ (commit $BGUTIL_COMMIT)} | this repo's public workflow, stage bgutil-src (cargo build --release --locked --features ffi)"
   else
     BG_ROW="upstream release binary $BGUTIL_VERSION (PREBUILT - dev builds only, do not submit) | n/a"
+  fi
+  if [ "$QJS_ORIGIN" = "srcbuild" ]; then
+    QJS_ROW="github.com/quickjs-ng/quickjs tag $QUICKJS_VERSION (sha256 ${QUICKJS_SRC_SHA256:-n/a}) | this repo's public workflow, stage quickjs-src (make qjs)"
+  else
+    QJS_ROW="upstream release binary $QUICKJS_VERSION (PREBUILT - dev builds only, do not submit) | n/a"
   fi
   if [ "$VENDOR_MODE" = "source" ]; then
     VENDOR_ROW="PyPI sdists, versions locked by upstream uv.lock | this repo's public workflow, stage deps (uv --no-binary)"
@@ -582,11 +651,15 @@ Build mode: $BUILD_MODE / vendor: $VENDOR_MODE
 |---|---|---|---|
 | CPython runtime | /opt/metube/python | $PY_ROW |
 | PO Token server | /opt/metube/bin/bgutil-pot | $BG_ROW |
+| JS runtime (qjs) | /opt/metube/bin/qjs | $QJS_ROW |
 | Python dependencies | /opt/metube/vendor | $VENDOR_ROW |
 | Web UI | /opt/metube/ui | upstream ui/ sources (tag $METUBE_VERSION) + assets/patches | this repo's public workflow, stage ui (pnpm/ng build) |
 | ffmpeg / aria2 | system (not bundled) | Ubuntu/TOS apt packages | dpkg dependencies |
 
-Deno is not bundled: the application and the Rust bgutil server never invoke it.
+quickjs-ng (qjs) is bundled as the yt-dlp JS challenge runtime: the web player
+client requires n/sig signature solving, and yt-dlp defaults to deno which this
+package does not ship. The metube launcher exports YTDL_OPTIONS with
+{"js_runtimes": {"quickjs": {}}} unless the user overrides it explicitly.
 
 Audit: rerun the same public GitHub Actions workflow and compare artifacts.
 A compat build (local development) bundles third-party prebuilt runtimes and is
@@ -615,7 +688,7 @@ stage_verify() {
   local p
   for p in "$M/app/main.py" "$M/ui/dist/metube/browser/index.html" \
            "$M/vendor/yt_dlp" "$M/vendor/yt_dlp_plugins/extractor/getpot_bgutil.py" \
-           "$M/python/bin/python3" "$M/bin/bgutil-pot" "$M/BUILD-INFO" \
+           "$M/python/bin/python3" "$M/bin/bgutil-pot" "$M/bin/qjs" "$M/BUILD-INFO" \
            "$STAGE_DIR/usr/share/doc/metube/PROVENANCE.md" \
            "$STAGE_DIR/usr/bin/metube" \
            "$STAGE_DIR/usr/share/metube/metube.env.example" \
@@ -642,11 +715,12 @@ stage_verify() {
       || { warn "app/main.py 缺少启动采用标记（补丁未应用？）"; fail=1; }
   fi
 
-  # V6 相关断言：deno 不得随包（运行时未使用）；source 构建必须如实标注
+  # V6 相关断言：deno 不得随包（-016 用 quickjs 替代）；qjs 必须存在
   if [ -e "$M/bin/deno" ] || [ -e "$M/vendor/bin/deno" ] \
      || ls "$M"/vendor/deno-*.dist-info >/dev/null 2>&1; then
     warn "发现 deno 随包（-011 起应彻底移除）"; fail=1
   fi
+  [ -x "$M/bin/qjs" ] || { warn "缺少 qjs（quickjs-ng JS 运行时）"; fail=1; }
   if [ "$BUILD_MODE" = "source" ]; then
     grep -q "built-from-source: yes" "$M/BUILD-INFO" \
       || { warn "source 构建的 BUILD-INFO 未标注 built-from-source: yes"; fail=1; }
@@ -729,6 +803,7 @@ MeTube 版本     : $METUBE_VERSION (deb $METUBE_VERSION-$PKG_RELEASE)
 CPython        : $PBS_PYTHON（source: 源码构建 / compat: PBS $PBS_TAG）
 Node(仅构建)   : v$NODE_VERSION ($NODE_HOST_PLAT)
 bgutil-pot     : $BGUTIL_VERSION ($BGUTIL_ARCH; source: Rust 源码构建)
+quickjs-ng     : $QUICKJS_VERSION ($BGUTIL_ARCH; source: C 源码构建)
 产物           : $DEB_FILE
 EOF
 }
@@ -754,12 +829,14 @@ case "$STAGE" in
   deps)       stage_deps ;;
   python-src) stage_python_src ;;
   bgutil-src) stage_bgutil_src ;;
+  quickjs-src) stage_quickjs_src ;;
   stage)      stage_stage ;;
   deb)        stage_deb ;;
   all)
     if [ "$BUILD_MODE" = "source" ]; then
       stage_python_src
       stage_bgutil_src
+      stage_quickjs_src
     fi
     stage_fetch; stage_ui; stage_deps; stage_stage; stage_verify; stage_deb ;;
   clean)      stage_clean ;;
