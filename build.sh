@@ -295,8 +295,8 @@ stage_quickjs_src() {
   [ -x "$SRC_QJS_ROOT/src/qjs" ] || die "未找到编译出的 qjs"
   cp "$SRC_QJS_ROOT/src/qjs" "$SRC_QJS_ROOT/qjs"
   chmod 0755 "$SRC_QJS_ROOT/qjs"
-  # 冒烟：qjs 能执行 JS；坏产物不许进缓存
-  "$SRC_QJS_ROOT/qjs" -e 'console.log(1+1)' 2>/dev/null | grep -q '^2$' \
+  # 冒烟：qjs 能执行 JS；坏产物不许进缓存（靠退出码，不依赖 console 行为）
+  "$SRC_QJS_ROOT/qjs" -e 'if (1+1 !== 2) throw new Error("smoke")' \
     || die "qjs 构建后冒烟测试失败"
   rm -rf "$SRC_QJS_ROOT/src"
   touch "$SRC_QJS_ROOT/.built"

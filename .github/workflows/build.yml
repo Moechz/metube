@@ -80,10 +80,11 @@ jobs:
           path: build/vendor
           key: srcbuild-vendor-${{ matrix.arch }}-${{ hashFiles('config.env', 'build.sh') }}
 
-      - name: Build runtimes from source (CPython + bgutil-pot)
+      - name: Build runtimes from source (CPython + bgutil-pot + quickjs)
         run: |
           ./build.sh python-src
           ./build.sh bgutil-src
+          ./build.sh quickjs-src
         env:
           BUILD_MODE: source
 
