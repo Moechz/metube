@@ -588,6 +588,9 @@ stage_stage() {
 
   # 文档
   cp "$SRC_DIR/LICENSE" "$STAGE_DIR/usr/share/doc/metube/copyright" 2>/dev/null || true
+  # 源码级审计说明（回应应用市场 S9/V6/T1/S4：逐组件列出源码来源/构建方式/可复现审计）
+  cp "$SCRIPT_DIR/docs/SOURCE-AUDIT.md" "$STAGE_DIR/usr/share/doc/metube/SOURCE-AUDIT.md" 2>/dev/null \
+    || warn "缺少 docs/SOURCE-AUDIT.md（审计说明文档）"
   {
     echo "metube ($METUBE_VERSION-$PKG_RELEASE) TOS; urgency=medium"
     echo ""
@@ -596,6 +599,8 @@ stage_stage() {
     echo "    Rust 源码、quickjs-ng C 源码、Python 依赖 sdist）——应用市场 V6 整改"
     echo "  * -016: 捆绑 quickjs-ng(qjs) 作为 yt-dlp JS 挑战解密运行时，修复"
     echo "    web client 因缺 JS runtime 导致格式缺失/下载失败（早期 deno 被误删）"
+    echo "  * -017: 端口收敏（metube/pot 均仅监听 127.0.0.1，外部经 TOS nginx）；"
+    echo "    新增源码级审计说明 /usr/share/doc/metube/SOURCE-AUDIT.md"
     echo ""
     echo " -- $MAINTAINER  $(date -R 2>/dev/null || date '+%a, %d %b %Y %H:%M:%S %z')"
   } > "$STAGE_DIR/usr/share/doc/metube/changelog.Debian"
@@ -668,6 +673,9 @@ package does not ship. The metube launcher exports YTDL_OPTIONS with
 Audit: rerun the same public GitHub Actions workflow and compare artifacts.
 A compat build (local development) bundles third-party prebuilt runtimes and is
 marked as such in /opt/metube/BUILD-INFO; never submit compat builds to the store.
+
+See /usr/share/doc/metube/SOURCE-AUDIT.md for the component-by-component
+source-audit statement (review items S9 / V6 / T1 / S4).
 EOF
 
   # 清理 macOS 扩展属性，避免污染 tar（AppleDouble / quarantine）
@@ -694,6 +702,7 @@ stage_verify() {
            "$M/vendor/yt_dlp" "$M/vendor/yt_dlp_plugins/extractor/getpot_bgutil.py" \
            "$M/python/bin/python3" "$M/bin/bgutil-pot" "$M/bin/qjs" "$M/BUILD-INFO" \
            "$STAGE_DIR/usr/share/doc/metube/PROVENANCE.md" \
+           "$STAGE_DIR/usr/share/doc/metube/SOURCE-AUDIT.md" \
            "$STAGE_DIR/usr/bin/metube" \
            "$STAGE_DIR/usr/share/metube/metube.env.example" \
            "$STAGE_DIR/etc/systemd/system/metubedownload.service" \
