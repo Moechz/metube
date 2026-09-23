@@ -274,7 +274,7 @@ stage_bgutil_src() {
 # ============================================================
 stage_quickjs_src() {
   [ "$(uname -s)" = "Linux" ] || die "quickjs-src 仅支持 Linux"
-  command -v make >/dev/null 2>&1 || die "需要 make（apt install build-essential）"
+  command -v cmake >/dev/null 2>&1 || die "需要 cmake（apt install cmake）"
   if [ -f "$SRC_QJS_ROOT/.built" ] && [ -x "$SRC_QJS_ROOT/qjs" ]; then
     log "qjs 源码构建已缓存: $SRC_QJS_ROOT"
     return 0
@@ -290,10 +290,14 @@ stage_quickjs_src() {
   rm -rf "$SRC_QJS_ROOT"
   mkdir -p "$SRC_QJS_ROOT/src"
   tar xzf "$DL_DIR/$QJS_SRC_TGZ" -C "$SRC_QJS_ROOT/src" --strip-components=1
-  log "make quickjs-ng qjs（约 1-2 分钟）..."
-  ( cd "$SRC_QJS_ROOT/src" && make -j"$(nproc)" qjs )
-  [ -x "$SRC_QJS_ROOT/src/qjs" ] || die "未找到编译出的 qjs"
-  cp "$SRC_QJS_ROOT/src/qjs" "$SRC_QJS_ROOT/qjs"
+  # quickjs-ng v0.17 起用 CMake 构建（make 只是包装；无 qjs 目标）；
+  # 产物固定为源码树下的 build/qjs
+  log "cmake 构建 quickjs-ng qjs（约 1-2 分钟）..."
+  ( cd "$SRC_QJS_ROOT/src" \
+      && cmake -B build -DCMAKE_BUILD_TYPE=Release >/dev/null \
+      && cmake --build build --target qjs_exe -j"$(nproc)" )
+  [ -x "$SRC_QJS_ROOT/src/build/qjs" ] || die "未找到编译出的 qjs（$SRC_QJS_ROOT/src/build/qjs）"
+  cp "$SRC_QJS_ROOT/src/build/qjs" "$SRC_QJS_ROOT/qjs"
   chmod 0755 "$SRC_QJS_ROOT/qjs"
   # 冒烟：qjs 能执行 JS；坏产物不许进缓存（靠退出码，不依赖 console 行为）
   "$SRC_QJS_ROOT/qjs" -e 'if (1+1 !== 2) throw new Error("smoke")' \
