@@ -16,7 +16,7 @@
   "category": ["Download"],
   "depend": [],
   "relation": [],
-  "platform": "x86_64",
+  "platform": "@@PLATFORM@@",
   "low_version": "TOS 7.0",
   "reset": false,
   "Official": "https://forum.terra-master.com/en/viewtopic.php?t=10595",

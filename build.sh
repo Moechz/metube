@@ -47,11 +47,13 @@ case "$TARGET_ARCH" in
     UV_PY_PLATFORM="x86_64-unknown-linux-gnu"
     PBS_TRIPLE="x86_64-unknown-linux-gnu"
     BGUTIL_ARCH="x86_64"
+    TOS_PLATFORM="x86_64"
     ;;
   arm64)
     UV_PY_PLATFORM="aarch64-unknown-linux-gnu"
     PBS_TRIPLE="aarch64-unknown-linux-gnu"
     BGUTIL_ARCH="aarch64"
+    TOS_PLATFORM="aarch64"
     ;;
   *)
     echo "错误: 未知 TARGET_ARCH=$TARGET_ARCH（支持 amd64 / arm64）" >&2
@@ -565,6 +567,7 @@ stage_stage() {
   log "  + TOS 应用中心元数据（/usr/local/metubedownload）"
   sed -e "s|@@VERSION@@|$METUBE_VERSION-$PKG_RELEASE|g" \
       -e "s|@@PUBLISHER@@|$PUBLISHER|g" \
+      -e "s|@@PLATFORM@@|$TOS_PLATFORM|g" \
       "$ASSETS_DIR/tos/config.ini.in" > "$STAGE_DIR/usr/local/metubedownload/config.ini"
   sed -e "s|@@VERSION@@|$METUBE_VERSION-$PKG_RELEASE|g" \
       "$ASSETS_DIR/tos/metubedownload.lang" > "$STAGE_DIR/usr/local/metubedownload/metubedownload.lang"
@@ -601,6 +604,8 @@ stage_stage() {
     echo "    web client 因缺 JS runtime 导致格式缺失/下载失败（早期 deno 被误删）"
     echo "  * -017: 端口收敏（metube/pot 均仅监听 127.0.0.1，外部经 TOS nginx）；"
     echo "    新增源码级审计说明 /usr/share/doc/metube/SOURCE-AUDIT.md"
+    echo "  * -018: config.ini 的 platform 随架构生成（x86_64/aarch64），修复 aarch64"
+    echo "    包被应用市场判定 platform 与包架构不一致"
     echo ""
     echo " -- $MAINTAINER  $(date -R 2>/dev/null || date '+%a, %d %b %Y %H:%M:%S %z')"
   } > "$STAGE_DIR/usr/share/doc/metube/changelog.Debian"
@@ -734,6 +739,17 @@ stage_verify() {
     warn "发现 deno 随包（-011 起应彻底移除）"; fail=1
   fi
   [ -x "$M/bin/qjs" ] || { warn "缺少 qjs（quickjs-ng JS 运行时）"; fail=1; }
+
+  # 应用市场规则：config.ini 的 platform 必须与包架构一致，否则后台报
+  # "Platform mismatch: the platform bound architecture is aarch64, but the
+  #  package resolves to x86_64"（-017 aarch64 实测）
+  local cfg_plat
+  cfg_plat=$(grep -oE '"platform"[[:space:]]*:[[:space:]]*"[^"]*"' \
+               "$STAGE_DIR/usr/local/metubedownload/config.ini" 2>/dev/null \
+             | sed 's/.*"\([^"]*\)"$/\1/')
+  if [ "$cfg_plat" != "$TOS_PLATFORM" ]; then
+    warn "config.ini platform=$cfg_plat 与目标架构 $TOS_PLATFORM 不一致（aarch64/x86_64 必须随架构生成）"; fail=1
+  fi
   if [ "$BUILD_MODE" = "source" ]; then
     grep -q "built-from-source: yes" "$M/BUILD-INFO" \
       || { warn "source 构建的 BUILD-INFO 未标注 built-from-source: yes"; fail=1; }
