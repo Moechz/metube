@@ -1,6 +1,9 @@
 # MeTube for TOS 7 — nginx 反代配置（TOS 应用中心 iframe 集成）
 # 由 deb 安装到 /etc/nginx/conf.d/metube.conf（conffile）
-location /metube/ {
+# ★ ^~ 前缀匹配：优先级高于正则 location —— 必须带（pi-agent 侧实测，指南坑 65）。
+# TOS「应用访问控制」会生成 `location ~ ^/<appid>/(.*) { auth_request …; try_files … =404; }`（正则、无反代），
+# 按 nginx 顺序（= → ^~ → 正则 → 普通前缀）正则赢 → 本段反代永不被选中，应用表现为"只显示落地页/302→桌面/404"。
+location ^~ /metube/ {
     proxy_pass http://127.0.0.1:8081/metube/;
     proxy_http_version 1.1;
     # WebSocket (socket.io) 升级
