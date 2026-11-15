@@ -1,158 +1,105 @@
-# MeTube Download for TOS (deb packaging)
+# metube-for-tos
 
-Packages [MeTube](https://github.com/alexta69/metube) (a web download UI for yt-dlp: playlists / subscriptions / quality selection) as a **deb** for **TOS** (TerraMaster Debian-based NAS, amd64 / arm64).
+> TerraMaster TOS 7 App Center — **Docker application** package for
+> [MeTube](https://github.com/alexta69/metube).
 
-**Highlights**: the deb ships a complete self-contained runtime (CPython 3.13 + all Python dependencies + Deno + the YouTube PO Token service). It does **not** depend on the NAS system Python — after `apt install` it just works.
+## What this is
 
-- Requirements & acceptance: [PROJECT_REQUIREMENTS.md](PROJECT_REQUIREMENTS.md)
-- Technical design & handover: [PROJECT_HANDOVER_DOCS.md](PROJECT_HANDOVER_DOCS.md)
+A four-file TOS Docker application archive (`metubedocker.tar.gz`) that installs
+MeTube on TOS 7 through the App Center:
 
----
+- `config.ini` — TOS application metadata (`application_type: docker`, id `metubedocker`)
+- `metubedocker.lang` — 23-language superset (TOS requires 14)
+- `metubedocker.svg` — application icon (274 bytes, 2 SVG elements)
+- `docker-compose.yml` — one service, image `alexta69/metube:2026.11.14`
+
+## How it works
+
+| | |
+|---|---|
+| Container image | `alexta69/metube:2026.11.14` (Docker Hub, used unmodified) |
+| Open | `http://<NAS-IP>:8166/` (container port 8081) |
+| Runs as | non-root, `user: "1000:1000"` |
+| Persistent data | `/downloads` → `/Volume1/DockerAppData/metubedocker/downloads` |
+| Logs | `docker logs metubedocker` (stdout/stderr) |
+
+`/downloads` (mounted from `DockerAppData/metubedocker/downloads`) holds the downloaded media and the queue database.
+
+## Design highlights
+
+- **Non-root.** `user: "1000:1000"`; verified on real hardware (the container reports uid 1000).
+- **Fixed image tag, never `:latest`**, Docker Hub only, no `privileged`, no `network_mode: host`, and no Docker socket, no `cap_add`.
+- **Health check** probing the service on container port 8081.
+- **Deterministic build**: GNU tar with uid/gid 0 and zeroed timestamps, gzip without a timestamp, plus the review-standards self-check above.
+- **Runs as uid 1000.** The image detects the container user and starts as 1000.
+- **yt-dlp inside the image.** Downloads use the bundled binary; update the image to update yt-dlp.
+
+## Privacy
+
+This application runs entirely on your NAS. It does not include analytics, telemetry or advertising SDKs, and the packaging contains no code that sends data to the packager. Data is only exchanged with the services you configure yourself (for example media servers, notification endpoints or model APIs), and only from the container. Everything the application stores lives in the application data folder described above; removing the app with its data deletes it.
+
+## Third-party components
+
+The package runs the upstream image `alexta69/metube:2026.11.14` unmodified. Its components and their licences are those of the upstream project (https://github.com/alexta69/metube), which is distributed under **MIT**. No upstream source code is redistributed in this repository; only the four packaging files are original work.
+
+## Runtime file manifest
+
+Everything the application writes on the NAS lives inside its own data
+directory; the container-internal `/tmp` is discarded with the container. The
+table lists what is created and how it behaves. Nothing else is written.
+
+| Path | Purpose | Created when | Growth bound | Lifecycle |
+|---|---|---|---|---|
+| `/Volume1/DockerAppData/metubedocker/downloads` | MeTube application data (everything the container writes outside /tmp) | on first start / on demand | bounded by your own data | persistent; kept on uninstall unless you ask to delete it |
 
 ## Build
 
-Releases are built **entirely from source in public CI** (`.github/workflows/build.yml`) — the bundled CPython interpreter is compiled from the official python.org source tarball (sha256 pinned in `config.env`), the PO Token server from its Rust sources, and every Python dependency from sdists. Each package embeds `/opt/metube/BUILD-INFO` and `/usr/share/doc/metube/PROVENANCE.md` documenting exactly how every binary was built.
+```bash
+scripts/build.sh                  # -> out/metubedocker.tar.gz + .sha256
+scripts/build.sh 2026.11.14-2   # packaging iteration bump
+scripts/build.sh 2026.11.14-1 aarch64
+```
 
-Tag a version (`v<upstream>-<serial>`) to build and publish a release for both amd64 and arm64 automatically, or run the workflow manually.
+The build stages the four files, substitutes the version/platform placeholders,
+removes CRLF/BOM/AppleDouble, then runs
+`tools/verify.py`, a review-standards self-check (archive layout, JSON validity,
+required fields, 14+ language coverage, version consistency, Docker-Hub-only
+images, fixed tag, reserved/recommended host ports, non-root user, per-service
+healthcheck/TZ/restart, data path below the application data root, never the
+`/Volume*` wildcard, comment-free sequence blocks, `x-app-meta` position, no
+literal secrets and the SVG size/element limits).
 
-For local development builds (e.g. on macOS):
+## Local verification
 
 ```bash
-./build.sh        # compat-mode build → out/metube_<version>_<arch>.deb
-./build.sh info   # show current version/arch configuration
+./TOSAppSelfTestingTool -c out/metubedocker.tar.gz   # official spec check
+bash test/install-and-verify.sh                  # on-device E2E (needs root)
 ```
 
-`compat` mode falls back to prebuilt third-party runtimes (python-build-standalone, upstream release binaries, manylinux wheels) for iteration speed; such builds are marked in their BUILD-INFO and must not be submitted to the App Center.
+> Docker applications cannot be side-loaded through the App Center's manual
+> install page (it accepts `.deb` only); the official self-testing tool's `-i`
+> mode or `docker compose` are the only ways to install one for testing.
 
-The build runs in stages (`fetch` → `ui` → `deps` → `stage` → `deb`, plus `python-src` / `bgutil-src` source-build stages on Linux); each stage is safely re-runnable and downloads are cached under `build/downloads/`.
+## Store submission checklist
 
-Common variants:
+1. Public GitHub repo (code + README only).
+2. Release **tag `v2026.11.14-1`**, assets `metubedocker.tar.gz` +
+   `metubedocker.tar.gz.sha256` (Docker asset naming: `<app_id>.tar.gz`, **no
+   platform suffix**).
+3. Developer platform → Add Application: ID `metubedocker`, package type Docker,
+   repository URL, architecture `x86_64`.
+4. Version Management → Add Version `2026.11.14-1` → automated validation → review.
 
-```bash
-# ARM-based NAS
-sed -i '' 's/TARGET_ARCH=amd64/TARGET_ARCH=arm64/' config.env   # on Linux drop the ''
-./build.sh
+## License / branding
 
-# Upgrading to a new upstream release: only change METUBE_VERSION in config.env
-```
+MeTube is distributed by its upstream authors under **MIT**. The container image is the official image from Docker Hub (`alexta69/metube:2026.11.14`) and is used unmodified; no upstream source code is redistributed here. This packaging is an independent community submission by Moechz and is not affiliated with the upstream project or TerraMaster.
 
-**Mirror acceleration** (optional, for networks with poor GitHub/PyPI/npm reachability):
+## Limitations
 
-```bash
-export NPM_CONFIG_REGISTRY=https://registry.npmmirror.com
-export UV_DEFAULT_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple
-./build.sh
-```
+- Only sites supported by yt-dlp work; some need login cookies.
+- Downloads use the NAS's internet connection; large files fill the data folder.
+- The UI is plain HTTP; use a TLS reverse proxy before exposing it to the internet.
 
-## Installing on TOS
+---
 
-```bash
-cat out/metube_*_amd64.deb | ssh user@nas "cat > /tmp/metube.deb"   # scp/sftp may be blocked on TOS; an ssh pipe is the most reliable
-ssh user@nas
-apt install -y /tmp/metube.deb     # pulls in aria2 automatically and starts the services
-```
-
-Then open **http://<NAS-IP>:8081** in a browser.
-
-> 💡 **TOS quirk**: the day-to-day account (e.g. `apple`) is itself uid 0 — **do not use sudo** (sudo actually drops you to a restricted uid 9999 and breaks the dpkg lock). On standard Debian/Ubuntu, use sudo as usual. TOS ships ffmpeg already; on other systems install it with `sudo apt install ffmpeg` if missing.
-
-## Configuration
-
-The single config file is **`/etc/metube/metube.env`** (never overwritten on upgrade). Common keys:
-
-| Variable | Default | Notes |
-|---|---|---|
-| `PORT` | `8081` | Web port |
-| `HOST` | `0.0.0.0` | Listen address (use `127.0.0.1` for localhost-only) |
-| `DOWNLOAD_DIR` | empty | Download directory (server-level config): any absolute path; when empty you can set it directly in the web UI (Option 2 below) |
-| `STATE_DIR` | `/var/lib/metube/state` | Queue/state persistence |
-| `OUTPUT_TEMPLATE` | `%(title)s.%(ext)s` | Output filename template |
-| `YTDL_OPTIONS` | `{}` | Advanced yt-dlp options (JSON; wrap in single quotes) |
-
-After editing, run `sudo systemctl restart metubedownload` (the main unit has been named `metubedownload.service` since `-010`).
-
-**Custom download directory** (fully up to you — any absolute path; no volume names or directory layouts are assumed):
-
-### Option 1: configure via the command line (server-level)
-
-```bash
-# 1. Edit the config and set DOWNLOAD_DIR to any absolute path (the directory does not need to exist yet):
-vi /etc/metube/metube.env
-#    DOWNLOAD_DIR=/any/path/you/like/metube
-
-# 2. Apply with one command (creates the directory, grants the metube user access,
-#    applies the sandbox write whitelist, restarts the service):
-metube-apply-config        # on TOS do NOT use sudo; on standard Debian use sudo
-```
-
-### Option 2: set it in the web UI (no command line; recommended for daily use)
-
-While `DOWNLOAD_DIR` is empty, simply type an **absolute path** into the **Download Folder** box in the web UI (the path of a shared folder as shown in your NAS file manager) and download:
-
-- Prerequisite: grant the **metube** user read/write permission on that folder in TOS *Shared Folders / User Permissions* first
-- Requirements: the path must already exist, be writable by the metube user, and be outside system locations (/etc, /usr, /home, …)
-- The path is **remembered** (stored in the app's own writable state area and pre-filled after page reloads); subsequent downloads need no input
-- A relative path still means "a subfolder of the base directory" (upstream semantics); both options can be mixed
-- Precedence: the server-level `DOWNLOAD_DIR` (Option 1) wins; a path chosen in the UI is restored automatically after restarts
-- Paths under `/home` are currently blocked by the sandbox; all other regular paths are fine
-
-**Download-directory gate (important)**: this package ships **no default download path**; `DOWNLOAD_DIR` is empty by default. Until you configure either option, download requests are rejected with `Set a download folder before downloading.` — files always land in a location you explicitly chose, never in some unexpected system directory.
-
-> 💡 To let family members watch videos over SMB, point the path at a shared folder on your NAS — use whatever path your device's file manager actually shows (volume layouts differ per device; this package makes no assumptions).
-
-## Service management
-
-```bash
-systemctl status metubedownload metube-pot  # status (main unit named metubedownload since -010; metube-pot is the YouTube PO Token service)
-journalctl -u metubedownload -f             # follow logs
-sudo systemctl restart metubedownload       # restart
-```
-
-Autostart on boot is enabled by default; a crashed main process is restarted within 5 seconds.
-
-## Updating yt-dlp (first thing to try when YouTube breaks)
-
-yt-dlp moves fast; after a YouTube change old versions fail to extract. Dependency updates are **distributed with new deb releases** (the App Center policy forbids runtime online installs, so the former `metube-update-ytdlp` tool was removed): install a new deb via App Center/dpkg and restart — user data and configuration are fully preserved.
-
-## Privacy policy
-
-The app collects and uploads no data. See the full policy inside the package (`privacy-policy.html`) or at `https://<NAS-IP>/metube/privacy-policy.html`.
-
-## Upgrade / uninstall
-
-```bash
-# Upgrade (newly built deb)
-sudo apt install ./metube_<new-version>_amd64.deb   # config preserved, services restarted automatically
-
-# Uninstall (keeps config and downloaded files)
-sudo apt remove metube
-
-# Full cleanup (also removes /var/lib/metube data and the metube user)
-sudo apt purge metube
-```
-
-## Troubleshooting
-
-| Symptom | Fix |
-|---|---|
-| Page won't open | `systemctl status metubedownload`; `journalctl -u metubedownload -n 50`; change `PORT` on conflicts |
-| Downloads fail to extract | Install a newer deb (yt-dlp ships with the package; no built-in online updater since -010) |
-| YouTube asks for login/token | Check `systemctl status metube-pot`; if still failing, install a newer deb |
-| YouTube completely unreachable (timeout/HTTP 000) | The NAS network must reach YouTube; with a proxy, add `YTDL_OPTIONS='{"proxy": "http://192.168.x.x:7890"}'` to `/etc/metube/metube.env` and restart |
-| "merging ... but ffmpeg is not installed" | TOS ffmpeg can be **file-level broken** (`dpkg -l` says installed but `/usr/bin/ffmpeg` is missing). Fix and restart: `apt install -y --reinstall ffmpeg libavdevice58 libavcodec58 libavfilter7 libavformat58 libavutil56 libpostproc55 libswresample3 libswscale5 && systemctl restart metubedownload` (no sudo on TOS; **the service must be restarted afterwards** — an old process caches the ffmpeg-unavailable state) |
-| UI-chosen directory rejected | The folder must exist and be writable by metube: grant access in TOS sharing permissions, or `chown -R metube:metube <dir>` (no sudo on TOS) |
-| Files writable/deletable by group members | `sudo systemctl edit metubedownload`, add `[Service]` + `UMask=0000` |
-| PO Token service logs | `journalctl -u metube-pot -n 50` |
-
-## On-disk layout (quick reference)
-
-```
-/opt/metube/                          self-contained stack (app + ui + vendor + python + bin)
-/usr/bin/metube                       launcher wrapper (dependency updates ship with new debs)
-/usr/bin/metube-apply-config          apply download-directory config
-/etc/metube/metube.env                configuration (bootstrap-once; never touched on upgrade)
-/etc/systemd/system/metubedownload.service   main service (+ metube-pot.service)
-/etc/systemd/system/metubedownload.service.d/99-download-dirs.conf   sandbox whitelist (generated)
-/usr/local/metubedownload/            TOS App Center metadata (config.ini, metubedownload.lang, icon, init.d/, webui.bz2, privacy-policy.html)
-/var/lib/metube/state/                queue/history/sticky download dir (user data — survives upgrades)
-```
+Packaged for TOS 7 by Moechz. Upstream image used unmodified from Docker Hub.

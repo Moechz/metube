@@ -1,0 +1,195 @@
+# ===========================================================================
+# Multilingual file for the TOS 7 Docker application "metubedocker".
+# File name MUST be: <appid>.lang.  23-language superset (14 required by TOS).
+# The App Center picks the text matching the user's device language;
+# untranslated nodes fall back to English, which the official guide allows.
+# Fields: name (app title), auth (upstream author), descript (up to 512
+# chars), release_note, important (up to 512 chars).
+# Translations come from tosapp.json "translations"; run
+#   tosdocker lang <app>          to re-render this file
+#   tosdocker translate <app>     to see what still needs translating
+# ===========================================================================
+[en-us]
+name         = "MeTube"
+auth         = "alexta69"
+version      = "@@VERSION@@"
+descript     = "MeTube is a web UI for yt-dlp: paste a link, pick format and quality, and the video or audio is downloaded straight into a folder on your NAS - no terminal needed. It supports playlists and channels, shows live progress, keeps a download queue and history, and bundles yt-dlp updates in the image."
+release_note = "1. First release: MeTube 2026.11.14 from Docker Hub as a non-root container. yt-dlp web UI with queue, history and format selection; downloads saved to the application data folder."
+important    = "Requires DockerEngine (installed automatically if missing). Paste URLs in the web UI; files land in DockerAppData/metubedocker/downloads. Downloads need outbound internet access from the NAS, and the sites you use may require login cookies (configure them in the UI settings). Plain HTTP; use a TLS reverse proxy before exposing it to the internet."
+
+[zh-cn]
+name         = "MeTube"
+auth         = "alexta69"
+version      = "@@VERSION@@"
+descript     = "MeTube 是 yt-dlp 的网页界面：粘贴链接、选格式与清晰度，视频或音频就直接下载到 NAS 上的目录里，不用敲命令。支持播放列表与频道、实时进度、下载队列与历史，镜像里自带 yt-dlp 更新。"
+release_note = "1. 首个版本：基于 Docker Hub 的 MeTube 2026.11.14，以非 root 容器运行。yt-dlp 网页界面，带队列、历史与格式选择；下载文件保存在应用数据目录。"
+important    = "需要 DockerEngine（缺失时应用中心会自动安装）。在网页里粘贴 URL，文件落在 DockerAppData/metubedocker/downloads。下载需要 NAS 能访问外网，部分站点可能需要在界面设置里配置登录 Cookie。界面为纯 HTTP，暴露到公网前请配置带 TLS 的反向代理。"
+
+[zh-hk]
+name         = "MeTube"
+auth         = "alexta69"
+version      = "@@VERSION@@"
+descript     = "MeTube 是 yt-dlp 的網頁介面：貼上連結、選格式與清晰度，影片或音訊就直接下載到 NAS 上的目錄裡，不用敲指令。支援播放清單與頻道、即時進度、下載佇列與歷史，映像裡自帶 yt-dlp 更新。"
+release_note = "1. 首個版本：基於 Docker Hub 的 MeTube 2026.11.14，以非 root 容器運行。yt-dlp 網頁介面，帶佇列、歷史與格式選擇；下載檔案保存在應用資料目錄。"
+important    = "需要 DockerEngine（缺少時應用中心會自動安裝）。在網頁裡貼上 URL，檔案落在 DockerAppData/metubedocker/downloads。下載需要 NAS 能存取外網，部分站點可能需要在介面設定裡配置登入 Cookie。介面為純 HTTP，公開到互聯網前請配置帶 TLS 的反向代理。"
+
+[fr-fr]
+name         = "MeTube"
+auth         = "alexta69"
+version      = "@@VERSION@@"
+descript     = "MeTube is a web UI for yt-dlp: paste a link, pick format and quality, and the video or audio is downloaded straight into a folder on your NAS - no terminal needed. It supports playlists and channels, shows live progress, keeps a download queue and history, and bundles yt-dlp updates in the image."
+release_note = "1. First release: MeTube 2026.11.14 from Docker Hub as a non-root container. yt-dlp web UI with queue, history and format selection; downloads saved to the application data folder."
+important    = "Requires DockerEngine (installed automatically if missing). Paste URLs in the web UI; files land in DockerAppData/metubedocker/downloads. Downloads need outbound internet access from the NAS, and the sites you use may require login cookies (configure them in the UI settings). Plain HTTP; use a TLS reverse proxy before exposing it to the internet."
+
+[de-de]
+name         = "MeTube"
+auth         = "alexta69"
+version      = "@@VERSION@@"
+descript     = "MeTube is a web UI for yt-dlp: paste a link, pick format and quality, and the video or audio is downloaded straight into a folder on your NAS - no terminal needed. It supports playlists and channels, shows live progress, keeps a download queue and history, and bundles yt-dlp updates in the image."
+release_note = "1. First release: MeTube 2026.11.14 from Docker Hub as a non-root container. yt-dlp web UI with queue, history and format selection; downloads saved to the application data folder."
+important    = "Requires DockerEngine (installed automatically if missing). Paste URLs in the web UI; files land in DockerAppData/metubedocker/downloads. Downloads need outbound internet access from the NAS, and the sites you use may require login cookies (configure them in the UI settings). Plain HTTP; use a TLS reverse proxy before exposing it to the internet."
+
+[it-it]
+name         = "MeTube"
+auth         = "alexta69"
+version      = "@@VERSION@@"
+descript     = "MeTube is a web UI for yt-dlp: paste a link, pick format and quality, and the video or audio is downloaded straight into a folder on your NAS - no terminal needed. It supports playlists and channels, shows live progress, keeps a download queue and history, and bundles yt-dlp updates in the image."
+release_note = "1. First release: MeTube 2026.11.14 from Docker Hub as a non-root container. yt-dlp web UI with queue, history and format selection; downloads saved to the application data folder."
+important    = "Requires DockerEngine (installed automatically if missing). Paste URLs in the web UI; files land in DockerAppData/metubedocker/downloads. Downloads need outbound internet access from the NAS, and the sites you use may require login cookies (configure them in the UI settings). Plain HTTP; use a TLS reverse proxy before exposing it to the internet."
+
+[es-es]
+name         = "MeTube"
+auth         = "alexta69"
+version      = "@@VERSION@@"
+descript     = "MeTube is a web UI for yt-dlp: paste a link, pick format and quality, and the video or audio is downloaded straight into a folder on your NAS - no terminal needed. It supports playlists and channels, shows live progress, keeps a download queue and history, and bundles yt-dlp updates in the image."
+release_note = "1. First release: MeTube 2026.11.14 from Docker Hub as a non-root container. yt-dlp web UI with queue, history and format selection; downloads saved to the application data folder."
+important    = "Requires DockerEngine (installed automatically if missing). Paste URLs in the web UI; files land in DockerAppData/metubedocker/downloads. Downloads need outbound internet access from the NAS, and the sites you use may require login cookies (configure them in the UI settings). Plain HTTP; use a TLS reverse proxy before exposing it to the internet."
+
+[hu-hu]
+name         = "MeTube"
+auth         = "alexta69"
+version      = "@@VERSION@@"
+descript     = "MeTube is a web UI for yt-dlp: paste a link, pick format and quality, and the video or audio is downloaded straight into a folder on your NAS - no terminal needed. It supports playlists and channels, shows live progress, keeps a download queue and history, and bundles yt-dlp updates in the image."
+release_note = "1. First release: MeTube 2026.11.14 from Docker Hub as a non-root container. yt-dlp web UI with queue, history and format selection; downloads saved to the application data folder."
+important    = "Requires DockerEngine (installed automatically if missing). Paste URLs in the web UI; files land in DockerAppData/metubedocker/downloads. Downloads need outbound internet access from the NAS, and the sites you use may require login cookies (configure them in the UI settings). Plain HTTP; use a TLS reverse proxy before exposing it to the internet."
+
+[ja-jp]
+name         = "MeTube"
+auth         = "alexta69"
+version      = "@@VERSION@@"
+descript     = "MeTube is a web UI for yt-dlp: paste a link, pick format and quality, and the video or audio is downloaded straight into a folder on your NAS - no terminal needed. It supports playlists and channels, shows live progress, keeps a download queue and history, and bundles yt-dlp updates in the image."
+release_note = "1. First release: MeTube 2026.11.14 from Docker Hub as a non-root container. yt-dlp web UI with queue, history and format selection; downloads saved to the application data folder."
+important    = "Requires DockerEngine (installed automatically if missing). Paste URLs in the web UI; files land in DockerAppData/metubedocker/downloads. Downloads need outbound internet access from the NAS, and the sites you use may require login cookies (configure them in the UI settings). Plain HTTP; use a TLS reverse proxy before exposing it to the internet."
+
+[ko-kr]
+name         = "MeTube"
+auth         = "alexta69"
+version      = "@@VERSION@@"
+descript     = "MeTube is a web UI for yt-dlp: paste a link, pick format and quality, and the video or audio is downloaded straight into a folder on your NAS - no terminal needed. It supports playlists and channels, shows live progress, keeps a download queue and history, and bundles yt-dlp updates in the image."
+release_note = "1. First release: MeTube 2026.11.14 from Docker Hub as a non-root container. yt-dlp web UI with queue, history and format selection; downloads saved to the application data folder."
+important    = "Requires DockerEngine (installed automatically if missing). Paste URLs in the web UI; files land in DockerAppData/metubedocker/downloads. Downloads need outbound internet access from the NAS, and the sites you use may require login cookies (configure them in the UI settings). Plain HTTP; use a TLS reverse proxy before exposing it to the internet."
+
+[pl-pl]
+name         = "MeTube"
+auth         = "alexta69"
+version      = "@@VERSION@@"
+descript     = "MeTube is a web UI for yt-dlp: paste a link, pick format and quality, and the video or audio is downloaded straight into a folder on your NAS - no terminal needed. It supports playlists and channels, shows live progress, keeps a download queue and history, and bundles yt-dlp updates in the image."
+release_note = "1. First release: MeTube 2026.11.14 from Docker Hub as a non-root container. yt-dlp web UI with queue, history and format selection; downloads saved to the application data folder."
+important    = "Requires DockerEngine (installed automatically if missing). Paste URLs in the web UI; files land in DockerAppData/metubedocker/downloads. Downloads need outbound internet access from the NAS, and the sites you use may require login cookies (configure them in the UI settings). Plain HTTP; use a TLS reverse proxy before exposing it to the internet."
+
+[ru-ru]
+name         = "MeTube"
+auth         = "alexta69"
+version      = "@@VERSION@@"
+descript     = "MeTube is a web UI for yt-dlp: paste a link, pick format and quality, and the video or audio is downloaded straight into a folder on your NAS - no terminal needed. It supports playlists and channels, shows live progress, keeps a download queue and history, and bundles yt-dlp updates in the image."
+release_note = "1. First release: MeTube 2026.11.14 from Docker Hub as a non-root container. yt-dlp web UI with queue, history and format selection; downloads saved to the application data folder."
+important    = "Requires DockerEngine (installed automatically if missing). Paste URLs in the web UI; files land in DockerAppData/metubedocker/downloads. Downloads need outbound internet access from the NAS, and the sites you use may require login cookies (configure them in the UI settings). Plain HTTP; use a TLS reverse proxy before exposing it to the internet."
+
+[tr-tr]
+name         = "MeTube"
+auth         = "alexta69"
+version      = "@@VERSION@@"
+descript     = "MeTube is a web UI for yt-dlp: paste a link, pick format and quality, and the video or audio is downloaded straight into a folder on your NAS - no terminal needed. It supports playlists and channels, shows live progress, keeps a download queue and history, and bundles yt-dlp updates in the image."
+release_note = "1. First release: MeTube 2026.11.14 from Docker Hub as a non-root container. yt-dlp web UI with queue, history and format selection; downloads saved to the application data folder."
+important    = "Requires DockerEngine (installed automatically if missing). Paste URLs in the web UI; files land in DockerAppData/metubedocker/downloads. Downloads need outbound internet access from the NAS, and the sites you use may require login cookies (configure them in the UI settings). Plain HTTP; use a TLS reverse proxy before exposing it to the internet."
+
+[pt-pt]
+name         = "MeTube"
+auth         = "alexta69"
+version      = "@@VERSION@@"
+descript     = "MeTube is a web UI for yt-dlp: paste a link, pick format and quality, and the video or audio is downloaded straight into a folder on your NAS - no terminal needed. It supports playlists and channels, shows live progress, keeps a download queue and history, and bundles yt-dlp updates in the image."
+release_note = "1. First release: MeTube 2026.11.14 from Docker Hub as a non-root container. yt-dlp web UI with queue, history and format selection; downloads saved to the application data folder."
+important    = "Requires DockerEngine (installed automatically if missing). Paste URLs in the web UI; files land in DockerAppData/metubedocker/downloads. Downloads need outbound internet access from the NAS, and the sites you use may require login cookies (configure them in the UI settings). Plain HTTP; use a TLS reverse proxy before exposing it to the internet."
+
+[ar-sa]
+name         = "MeTube"
+auth         = "alexta69"
+version      = "@@VERSION@@"
+descript     = "MeTube is a web UI for yt-dlp: paste a link, pick format and quality, and the video or audio is downloaded straight into a folder on your NAS - no terminal needed. It supports playlists and channels, shows live progress, keeps a download queue and history, and bundles yt-dlp updates in the image."
+release_note = "1. First release: MeTube 2026.11.14 from Docker Hub as a non-root container. yt-dlp web UI with queue, history and format selection; downloads saved to the application data folder."
+important    = "Requires DockerEngine (installed automatically if missing). Paste URLs in the web UI; files land in DockerAppData/metubedocker/downloads. Downloads need outbound internet access from the NAS, and the sites you use may require login cookies (configure them in the UI settings). Plain HTTP; use a TLS reverse proxy before exposing it to the internet."
+
+[cs-cz]
+name         = "MeTube"
+auth         = "alexta69"
+version      = "@@VERSION@@"
+descript     = "MeTube is a web UI for yt-dlp: paste a link, pick format and quality, and the video or audio is downloaded straight into a folder on your NAS - no terminal needed. It supports playlists and channels, shows live progress, keeps a download queue and history, and bundles yt-dlp updates in the image."
+release_note = "1. First release: MeTube 2026.11.14 from Docker Hub as a non-root container. yt-dlp web UI with queue, history and format selection; downloads saved to the application data folder."
+important    = "Requires DockerEngine (installed automatically if missing). Paste URLs in the web UI; files land in DockerAppData/metubedocker/downloads. Downloads need outbound internet access from the NAS, and the sites you use may require login cookies (configure them in the UI settings). Plain HTTP; use a TLS reverse proxy before exposing it to the internet."
+
+[he-il]
+name         = "MeTube"
+auth         = "alexta69"
+version      = "@@VERSION@@"
+descript     = "MeTube is a web UI for yt-dlp: paste a link, pick format and quality, and the video or audio is downloaded straight into a folder on your NAS - no terminal needed. It supports playlists and channels, shows live progress, keeps a download queue and history, and bundles yt-dlp updates in the image."
+release_note = "1. First release: MeTube 2026.11.14 from Docker Hub as a non-root container. yt-dlp web UI with queue, history and format selection; downloads saved to the application data folder."
+important    = "Requires DockerEngine (installed automatically if missing). Paste URLs in the web UI; files land in DockerAppData/metubedocker/downloads. Downloads need outbound internet access from the NAS, and the sites you use may require login cookies (configure them in the UI settings). Plain HTTP; use a TLS reverse proxy before exposing it to the internet."
+
+[id-id]
+name         = "MeTube"
+auth         = "alexta69"
+version      = "@@VERSION@@"
+descript     = "MeTube is a web UI for yt-dlp: paste a link, pick format and quality, and the video or audio is downloaded straight into a folder on your NAS - no terminal needed. It supports playlists and channels, shows live progress, keeps a download queue and history, and bundles yt-dlp updates in the image."
+release_note = "1. First release: MeTube 2026.11.14 from Docker Hub as a non-root container. yt-dlp web UI with queue, history and format selection; downloads saved to the application data folder."
+important    = "Requires DockerEngine (installed automatically if missing). Paste URLs in the web UI; files land in DockerAppData/metubedocker/downloads. Downloads need outbound internet access from the NAS, and the sites you use may require login cookies (configure them in the UI settings). Plain HTTP; use a TLS reverse proxy before exposing it to the internet."
+
+[nb-no]
+name         = "MeTube"
+auth         = "alexta69"
+version      = "@@VERSION@@"
+descript     = "MeTube is a web UI for yt-dlp: paste a link, pick format and quality, and the video or audio is downloaded straight into a folder on your NAS - no terminal needed. It supports playlists and channels, shows live progress, keeps a download queue and history, and bundles yt-dlp updates in the image."
+release_note = "1. First release: MeTube 2026.11.14 from Docker Hub as a non-root container. yt-dlp web UI with queue, history and format selection; downloads saved to the application data folder."
+important    = "Requires DockerEngine (installed automatically if missing). Paste URLs in the web UI; files land in DockerAppData/metubedocker/downloads. Downloads need outbound internet access from the NAS, and the sites you use may require login cookies (configure them in the UI settings). Plain HTTP; use a TLS reverse proxy before exposing it to the internet."
+
+[nl-nl]
+name         = "MeTube"
+auth         = "alexta69"
+version      = "@@VERSION@@"
+descript     = "MeTube is a web UI for yt-dlp: paste a link, pick format and quality, and the video or audio is downloaded straight into a folder on your NAS - no terminal needed. It supports playlists and channels, shows live progress, keeps a download queue and history, and bundles yt-dlp updates in the image."
+release_note = "1. First release: MeTube 2026.11.14 from Docker Hub as a non-root container. yt-dlp web UI with queue, history and format selection; downloads saved to the application data folder."
+important    = "Requires DockerEngine (installed automatically if missing). Paste URLs in the web UI; files land in DockerAppData/metubedocker/downloads. Downloads need outbound internet access from the NAS, and the sites you use may require login cookies (configure them in the UI settings). Plain HTTP; use a TLS reverse proxy before exposing it to the internet."
+
+[sv-se]
+name         = "MeTube"
+auth         = "alexta69"
+version      = "@@VERSION@@"
+descript     = "MeTube is a web UI for yt-dlp: paste a link, pick format and quality, and the video or audio is downloaded straight into a folder on your NAS - no terminal needed. It supports playlists and channels, shows live progress, keeps a download queue and history, and bundles yt-dlp updates in the image."
+release_note = "1. First release: MeTube 2026.11.14 from Docker Hub as a non-root container. yt-dlp web UI with queue, history and format selection; downloads saved to the application data folder."
+important    = "Requires DockerEngine (installed automatically if missing). Paste URLs in the web UI; files land in DockerAppData/metubedocker/downloads. Downloads need outbound internet access from the NAS, and the sites you use may require login cookies (configure them in the UI settings). Plain HTTP; use a TLS reverse proxy before exposing it to the internet."
+
+[th-th]
+name         = "MeTube"
+auth         = "alexta69"
+version      = "@@VERSION@@"
+descript     = "MeTube is a web UI for yt-dlp: paste a link, pick format and quality, and the video or audio is downloaded straight into a folder on your NAS - no terminal needed. It supports playlists and channels, shows live progress, keeps a download queue and history, and bundles yt-dlp updates in the image."
+release_note = "1. First release: MeTube 2026.11.14 from Docker Hub as a non-root container. yt-dlp web UI with queue, history and format selection; downloads saved to the application data folder."
+important    = "Requires DockerEngine (installed automatically if missing). Paste URLs in the web UI; files land in DockerAppData/metubedocker/downloads. Downloads need outbound internet access from the NAS, and the sites you use may require login cookies (configure them in the UI settings). Plain HTTP; use a TLS reverse proxy before exposing it to the internet."
+
+[vi-vn]
+name         = "MeTube"
+auth         = "alexta69"
+version      = "@@VERSION@@"
+descript     = "MeTube is a web UI for yt-dlp: paste a link, pick format and quality, and the video or audio is downloaded straight into a folder on your NAS - no terminal needed. It supports playlists and channels, shows live progress, keeps a download queue and history, and bundles yt-dlp updates in the image."
+release_note = "1. First release: MeTube 2026.11.14 from Docker Hub as a non-root container. yt-dlp web UI with queue, history and format selection; downloads saved to the application data folder."
+important    = "Requires DockerEngine (installed automatically if missing). Paste URLs in the web UI; files land in DockerAppData/metubedocker/downloads. Downloads need outbound internet access from the NAS, and the sites you use may require login cookies (configure them in the UI settings). Plain HTTP; use a TLS reverse proxy before exposing it to the internet."
+

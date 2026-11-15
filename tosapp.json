@@ -1,0 +1,107 @@
+{
+  "app_id": "metubedocker",
+  "title": "MeTube",
+  "image": "alexta69/metube:2026.11.14",
+  "repo_name": "metube",
+  "mode": "plain",
+  "container_port": 8081,
+  "category": [
+    "Audio_Video_Entertainment"
+  ],
+  "volumes": [
+    {
+      "host": "/Volume1/DockerAppData/metubedocker/downloads",
+      "container": "/downloads"
+    }
+  ],
+  "env": {
+    "TZ": "Asia/Shanghai"
+  },
+  "auth": "alexta69",
+  "upstream_url": "https://github.com/alexta69/metube",
+  "upstream_license": "MIT",
+  "descript": "MeTube is a web UI for yt-dlp: paste a link, pick format and quality, and the video or audio is downloaded straight into a folder on your NAS - no terminal needed. It supports playlists and channels, shows live progress, keeps a download queue and history, and bundles yt-dlp updates in the image.",
+  "release_note": "1. First release: MeTube 2026.11.14 from Docker Hub as a non-root container. yt-dlp web UI with queue, history and format selection; downloads saved to the application data folder.",
+  "important": "Requires DockerEngine (installed automatically if missing). Paste URLs in the web UI; files land in DockerAppData/metubedocker/downloads. Downloads need outbound internet access from the NAS, and the sites you use may require login cookies (configure them in the UI settings). Plain HTTP; use a TLS reverse proxy before exposing it to the internet.",
+  "probe": {
+    "user_in_image": "(root)",
+    "entrypoint": [
+      "/usr/bin/tini",
+      "-g",
+      "--",
+      "./docker-entrypoint.sh"
+    ],
+    "cmd": null,
+    "exposed_ports": [
+      8081
+    ],
+    "declared_volumes": [
+      "/downloads"
+    ],
+    "image_healthcheck": [
+      "CMD-SHELL",
+      "case \"$HTTPS\" in true|True|on|1) curl -fsSk \"https://localhost:${PORT}/\";; *) curl -fsS \"http://localhost:${PORT}/\";; esac || exit 1"
+    ],
+    "digest": "alexta69/metube@sha256:55ce41ab9a78069dc42bd808b20a96aeef4199560a02698a2205ea8a2bc4fef1",
+    "architecture": "x86_64",
+    "platforms": [
+      "x86_64",
+      "aarch64"
+    ],
+    "http_client_in_image": "curl",
+    "trial_run": {
+      "ok": true,
+      "http_code": "200",
+      "state": "running",
+      "paths": [
+        "/downloads"
+      ],
+      "host_port": 18000,
+      "log_tail": "Setting umask to 022\nCreating download directory (/downloads), audio download directory (/downloads), state directory (/downloads/.metube), and temp dir (/downloads)\nUser set by docker; running MeTube as 1000:1000\nStarting BgUtils POT Provider\nINFO:main:Listening on 0.0.0.0:8081\nINFO:ytdl:Initializing DownloadQueue",
+      "files_in_mounts": ""
+    },
+    "docker_hub": {},
+    "github": {}
+  },
+  "healthcheck": [
+    "CMD-SHELL",
+    "curl -s -o /dev/null http://127.0.0.1:8081/ || exit 1"
+  ],
+  "platform": "x86_64",
+  "user": "1000:1000",
+  "publisher": "Moechz",
+  "compose_project": "metubedocker",
+  "github_repo": "metube",
+  "upstream_version": "2026.11.14",
+  "release_tag_prefix": "v",
+  "version": "2026.11.14-1",
+  "help": "https://github.com/Moechz/metube/issues",
+  "official": "https://github.com/alexta69/metube",
+  "license": "MIT",
+  "docker_socket": false,
+  "group_add": [],
+  "host_port": 8166,
+  "healthcheck_start_period": "45s",
+  "translations": {
+    "zh-cn": {
+      "descript": "MeTube 是 yt-dlp 的网页界面：粘贴链接、选格式与清晰度，视频或音频就直接下载到 NAS 上的目录里，不用敲命令。支持播放列表与频道、实时进度、下载队列与历史，镜像里自带 yt-dlp 更新。",
+      "important": "需要 DockerEngine（缺失时应用中心会自动安装）。在网页里粘贴 URL，文件落在 DockerAppData/metubedocker/downloads。下载需要 NAS 能访问外网，部分站点可能需要在界面设置里配置登录 Cookie。界面为纯 HTTP，暴露到公网前请配置带 TLS 的反向代理。",
+      "release_note": "1. 首个版本：基于 Docker Hub 的 MeTube 2026.11.14，以非 root 容器运行。yt-dlp 网页界面，带队列、历史与格式选择；下载文件保存在应用数据目录。"
+    },
+    "zh-hk": {
+      "descript": "MeTube 是 yt-dlp 的網頁介面：貼上連結、選格式與清晰度，影片或音訊就直接下載到 NAS 上的目錄裡，不用敲指令。支援播放清單與頻道、即時進度、下載佇列與歷史，映像裡自帶 yt-dlp 更新。",
+      "important": "需要 DockerEngine（缺少時應用中心會自動安裝）。在網頁裡貼上 URL，檔案落在 DockerAppData/metubedocker/downloads。下載需要 NAS 能存取外網，部分站點可能需要在介面設定裡配置登入 Cookie。介面為純 HTTP，公開到互聯網前請配置帶 TLS 的反向代理。",
+      "release_note": "1. 首個版本：基於 Docker Hub 的 MeTube 2026.11.14，以非 root 容器運行。yt-dlp 網頁介面，帶佇列、歷史與格式選擇；下載檔案保存在應用資料目錄。"
+    }
+  },
+  "data_notes": "`/downloads` (mounted from `DockerAppData/metubedocker/downloads`) holds the downloaded media and the queue database.",
+  "design_notes": [
+    "**Runs as uid 1000.** The image detects the container user and starts as 1000.",
+    "**yt-dlp inside the image.** Downloads use the bundled binary; update the image to update yt-dlp."
+  ],
+  "limitations": [
+    "- Only sites supported by yt-dlp work; some need login cookies.",
+    "- Downloads use the NAS's internet connection; large files fill the data folder.",
+    "- The UI is plain HTTP; use a TLS reverse proxy before exposing it to the internet."
+  ]
+}
