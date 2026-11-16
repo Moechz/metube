@@ -7,10 +7,16 @@ package directory; fails the build on any deviation.
     python3 tools/verify.py <stage-dir> <version> <platform> <project-root>
 """
 import json
+import os
 import pathlib
 import re
+import shutil
+import struct
+import subprocess
 import sys
+import tempfile
 import xml.etree.ElementTree as ET
+import zlib
 
 CATEGORIES = {"Audio_Video_Entertainment", "Photography_Video", "Backup_Sync",
               "Development_Tools", "Utilities", "Web_Services", "Security",
@@ -126,6 +132,80 @@ except ET.ParseError as e:
     n_elems = -1
 for banned in ("<filter", "<use", "sodipodi", "inkscape", "<metadata", "rdf:"):
     chk(banned not in svg_txt, f"icon must not contain {banned}")
+# TOS ICON SPEC v1 hard rules: no letter text, no embedded bitmap, no white-on-
+# transparent artwork, glyph must sit at 73.4% (<=376px) with 68px padding.
+chk("<text" not in svg_txt, "icon must not use <text> (letter monograms are rejected)")
+chk("<image" not in svg_txt and "data:image" not in svg_txt,
+    "icon must be pure vector (embedded base64 PNG is rejected)")
+chk("<foreignObject" not in svg_txt, "icon must not use <foreignObject>")
+
+def _icon_stats(text):
+    if not shutil.which("rsvg-convert"):
+        return None
+    fd, tmp = tempfile.mkstemp(suffix=".svg")
+    os.write(fd, text.encode()); os.close(fd)
+    png = tmp + ".png"
+    try:
+        r = subprocess.run(["rsvg-convert", "-w", "512", "-h", "512", tmp, "-o", png],
+                           capture_output=True)
+        if r.returncode != 0:
+            return None
+        data = open(png, "rb").read()
+        pos, idat, w, h, ct = 8, b"", None, None, None
+        while pos < len(data):
+            ln = struct.unpack(">I", data[pos:pos+4])[0]
+            typ = data[pos+4:pos+8]; chunk = data[pos+8:pos+8+ln]; pos += 12 + ln
+            if typ == b"IHDR": w, h, _bd, ct = struct.unpack(">IIBB", chunk[:10])
+            elif typ == b"IDAT": idat += chunk
+            elif typ == b"IEND": break
+        raw = zlib.decompress(idat)
+        ch = {0: 1, 2: 3, 3: 1, 4: 2, 6: 4}[ct]; stride = w * ch
+        out, prev, p = bytearray(), bytearray(stride), 0
+        for _y in range(h):
+            f = raw[p]; p += 1; line = bytearray(raw[p:p+stride]); p += stride
+            if f == 1:
+                for i in range(ch, stride): line[i] = (line[i] + line[i-ch]) & 255
+            elif f == 2:
+                for i in range(stride): line[i] = (line[i] + prev[i]) & 255
+            elif f == 3:
+                for i in range(stride):
+                    a = line[i-ch] if i >= ch else 0
+                    line[i] = (line[i] + ((a + prev[i]) >> 1)) & 255
+            elif f == 4:
+                for i in range(stride):
+                    a = line[i-ch] if i >= ch else 0; b = prev[i]
+                    c = prev[i-ch] if i >= ch else 0
+                    pp = a + b - c; pa = abs(pp-a); pb = abs(pp-b); pc = abs(pp-c)
+                    pr = a if (pa <= pb and pa <= pc) else (b if pb <= pc else c)
+                    line[i] = (line[i] + pr) & 255
+            out += line; prev = line
+        minx, miny, maxx, maxy = w, h, -1, -1; rs = gs = bs = n = 0
+        for y in range(h):
+            for x in range(w):
+                a = out[(y*w+x)*ch+3] if ch == 4 else 255
+                if a > 16:
+                    minx = min(minx, x); maxx = max(maxx, x)
+                    miny = min(miny, y); maxy = max(maxy, y)
+                    if ch >= 3:
+                        rs += out[(y*w+x)*ch]; gs += out[(y*w+x)*ch+1]; bs += out[(y*w+x)*ch+2]
+                    n += 1
+        if maxx < 0:
+            return None
+        return (maxx-minx+1, maxy-miny+1, (rs//n, gs//n, bs//n) if n and ch >= 3 else (0,0,0))
+    finally:
+        os.unlink(tmp)
+        if os.path.exists(png): os.unlink(png)
+
+_tile = re.search(r'<rect[^>]*width="512"[^>]*height="512"[^>]*/>', svg_txt)
+_probe = _TILE_SUB = re.sub(r'<rect[^>]*width="512"[^>]*height="512"[^>]*/>', '', svg_txt, count=1)
+st = _icon_stats(_probe)
+if st:
+    _w, _h, _mean = st
+    chk(330 <= max(_w, _h) <= 378,
+        f"icon glyph must be 73.4% of the canvas (330..378px), got {max(_w,_h)}px")
+    if not _tile:
+        chk(min(_mean) <= 235,
+            "icon artwork is white on a transparent canvas (invisible in the store); add a coloured tile")
 
 # ---- docker-compose.yml -----------------------------------------------------
 comp = (stage / "docker-compose.yml").read_text(encoding="utf-8")

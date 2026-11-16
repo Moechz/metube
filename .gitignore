@@ -9,3 +9,7 @@ out/
 # Internal docs (kept local only)
 PROJECT_REQUIREMENTS.md
 PROJECT_HANDOVER_DOCS.md
+
+# --- local packaging helpers (never published) ---
+/.toolkit/
+/.gitconfig-local

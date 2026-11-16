@@ -74,7 +74,7 @@
   "github_repo": "metube",
   "upstream_version": "2026.11.14",
   "release_tag_prefix": "v",
-  "version": "2026.11.14-1",
+  "version": "2026.11.14-2",
   "help": "https://github.com/Moechz/metube/issues",
   "official": "https://github.com/alexta69/metube",
   "license": "MIT",
