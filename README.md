@@ -52,6 +52,28 @@ table lists what is created and how it behaves. Nothing else is written.
 |---|---|---|---|---|
 | `/Volume1/DockerAppData/metubedocker/downloads` | MeTube application data (everything the container writes outside /tmp) | on first start / on demand | bounded by your own data | persistent; kept on uninstall unless you ask to delete it |
 
+## Third-party services (API disclosure)
+
+The developer operates no server in this path. The app contacts only the services you
+configure, plus (optionally) an update check and the image registry.
+
+| Service | Endpoint | Data sent | Destination / region |
+|---|---|---|---|
+| Services you configure in the app | the address you enter | only the data that feature needs | normally your own LAN or the provider you chose |
+| Update check (if enabled) | the upstream project's release feed | current version string | GitHub, US |
+
+Full table: [PRIVACY.md](PRIVACY.md) §6.
+
+## Licence and attributions
+
+| Component | Licence | Notes |
+|---|---|---|
+| MeTube | MIT | upstream application |
+| This packaging | GPL-3.0 (see `LICENSE`) | TOS metadata, units, scripts, translations, icon |
+
+“MeTube”, “TerraMaster” and “TOS” are trademarks of their respective owners. This is an
+independent community package by Moechz. Full details: [NOTICE.md](NOTICE.md).
+
 ## Build
 
 ```bash
@@ -90,9 +112,6 @@ bash test/install-and-verify.sh                  # on-device E2E (needs root)
    repository URL, architecture `x86_64`.
 4. Version Management → Add Version `2026.11.14-1` → automated validation → review.
 
-## License / branding
-
-MeTube is distributed by its upstream authors under **MIT**. The container image is the official image from Docker Hub (`alexta69/metube:2026.11.14`) and is used unmodified; no upstream source code is redistributed here. This packaging is an independent community submission by Moechz and is not affiliated with the upstream project or TerraMaster.
 
 ## Limitations
 
@@ -103,3 +122,8 @@ MeTube is distributed by its upstream authors under **MIT**. The container image
 ---
 
 Packaged for TOS 7 by Moechz. Upstream image used unmodified from Docker Hub.
+
+## Support
+
+- Email: moechz@163.com
+- Privacy: [PRIVACY.md](PRIVACY.md) · Licence: [NOTICE.md](NOTICE.md)
